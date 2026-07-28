@@ -35,7 +35,10 @@ function mod.get_state_dir()
 end
 
 local function ensure_state_dir()
-  os.execute('mkdir -p "' .. mod.get_state_dir() .. '"')
+  -- os.execute() goes through the C runtime's system(), which allocates a
+  -- visible console for cmd.exe when the caller is a GUI process. That flashed
+  -- a window on every periodic save. run_child_process() does not.
+  helpers.create_directory(mod.get_state_dir())
 end
 
 function mod.is_excluded_workspace(name)

@@ -14,7 +14,8 @@ function mod.setup(plugin, deps)
 end
 
 local function ensure_dir()
-  os.execute('mkdir -p "' .. mod.HISTORY_DIR .. '"')
+  -- See state.lua: os.execute() flashes a console window on Windows.
+  helpers.create_directory(mod.HISTORY_DIR)
 end
 
 function mod.load()

@@ -71,10 +71,11 @@ end
 -- Create the folder if it does not exist
 ---@param path string
 function utils.ensure_folder_exists(path)
+	-- os.execute() flashes a console window on Windows; run_child_process() does not.
 	if utils.is_windows then
-		os.execute('mkdir /p "' .. path:gsub("/", "\\" .. '"'))
+		wezterm.run_child_process({ "cmd", "/c", "mkdir", (path:gsub("/", "\\")) })
 	else
-		os.execute('mkdir -p "' .. path .. '"')
+		wezterm.run_child_process({ "mkdir", "-p", path })
 	end
 end
 
