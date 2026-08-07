@@ -145,7 +145,9 @@ function mod.apply_to_config(config)
   config.key_tables = config.key_tables or {}
   config.key_tables.workspace_switcher_actions =
     actions.build_switcher_key_table()
+end
 
+function mod.apply_default_keybindings(config)
   -- Default keybindings (users can override by setting their own keys)
   local keys = config.keys or {}
 
