@@ -1,15 +1,15 @@
 local wezterm = require("wezterm")
 
-local M_ref   -- reference to plugin config table (set via setup)
+local M_ref -- reference to plugin config table (set via setup)
 local helpers -- set via setup
 
 local mod = {}
 
-mod.HISTORY_DIR  = wezterm.home_dir .. "/.local/share/wezterm"
+mod.HISTORY_DIR = wezterm.home_dir .. "/.local/share/wezterm"
 mod.HISTORY_FILE = mod.HISTORY_DIR .. "/workspace_history.json"
 
 function mod.setup(plugin, deps)
-  M_ref   = plugin
+  M_ref = plugin
   helpers = deps.helpers
 end
 
@@ -40,12 +40,14 @@ end
 
 function mod.update_access_time(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
-  wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times or {}
+  wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times
+    or {}
   wezterm.GLOBAL.workspace_access_times[normalized] = os.time()
   mod.save(wezterm.GLOBAL.workspace_access_times)
 end
 
 -- Initialize on first load
-wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times or mod.load()
+wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times
+  or mod.load()
 
 return mod

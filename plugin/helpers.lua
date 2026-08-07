@@ -9,26 +9,22 @@ local mod = {}
 mod.is_windows = wezterm.target_triple:find("windows") ~= nil
 mod.path_sep = mod.is_windows and "\\" or "/"
 
-function mod.setup(plugin)
-  M_ref = plugin
-end
+function mod.setup(plugin) M_ref = plugin end
 
 function mod.notify(window, title, message, timeout)
   if not M_ref.notifications_enabled then return end
-  pcall(function()
-    window:toast_notification(title, message, nil, timeout or 2000)
-  end)
+  pcall(
+    function() window:toast_notification(title, message, nil, timeout or 2000) end
+  )
 end
 
 function mod.get_wezterm_path()
   if M_ref.wezterm_path then
-    return M_ref.wezterm_path  -- User override
+    return M_ref.wezterm_path -- User override
   end
 
   local exe_dir = wezterm.executable_dir
-  if not exe_dir then
-    return nil
-  end
+  if not exe_dir then return nil end
 
   local exe_name = mod.is_windows and "wezterm.exe" or "wezterm"
   return exe_dir .. "/" .. exe_name
@@ -58,9 +54,7 @@ function mod.get_workspace_name_and_path(raw_path)
   local basename = string.match(normalized, "([^/]+)$")
 
   -- Fallback if extraction fails
-  if not basename or basename == "" then
-    return normalized, expanded
-  end
+  if not basename or basename == "" then return normalized, expanded end
 
   -- Check for duplicate basenames
   for _, ws in ipairs(mux.get_workspace_names()) do
@@ -80,19 +74,23 @@ end
 
 function mod.directory_exists(path)
   if mod.is_windows then
-    local success = wezterm.run_child_process({"cmd", "/c", "if exist \"" .. path .. "\\\" (exit 0) else (exit 1)"})
+    local success = wezterm.run_child_process({
+      "cmd",
+      "/c",
+      'if exist "' .. path .. '\\" (exit 0) else (exit 1)',
+    })
     return success
   else
-    local success = wezterm.run_child_process({"test", "-d", path})
+    local success = wezterm.run_child_process({ "test", "-d", path })
     return success
   end
 end
 
 function mod.create_directory(path)
   if mod.is_windows then
-    return wezterm.run_child_process({"cmd", "/c", "mkdir", path})
+    return wezterm.run_child_process({ "cmd", "/c", "mkdir", path })
   else
-    return wezterm.run_child_process({"mkdir", "-p", path})
+    return wezterm.run_child_process({ "mkdir", "-p", path })
   end
 end
 

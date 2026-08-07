@@ -1,27 +1,28 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
 
-local M_ref   -- reference to plugin config table (set via setup)
-local theme   -- set via setup
+local M_ref -- reference to plugin config table (set via setup)
+local theme -- set via setup
 local helpers -- set via setup
 local history -- set via setup
-local state   -- set via setup
+local state -- set via setup
 local actions -- set via setup
 
 local mod = {}
 
 function mod.setup(plugin, deps)
-  M_ref   = plugin
-  theme   = deps.theme
+  M_ref = plugin
+  theme = deps.theme
   helpers = deps.helpers
   history = deps.history
-  state   = deps.state
+  state = deps.state
   actions = deps.actions
 end
 
 function mod.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
-  local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel") or "  Esc=cancel"
+  local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel")
+    or "  Esc=cancel"
   return wezterm.format({
     theme.fg(theme.get_color("muted")),
     { Text = text },
@@ -33,8 +34,12 @@ function mod.apply_to_config(config)
   wezterm.on("window-focus-changed", function(window, pane)
     if window and window.active_workspace then
       local current = window:active_workspace()
-      if wezterm.GLOBAL.last_focused_workspace and wezterm.GLOBAL.last_focused_workspace ~= current then
-        wezterm.GLOBAL.previous_workspace = wezterm.GLOBAL.last_focused_workspace
+      if
+        wezterm.GLOBAL.last_focused_workspace
+        and wezterm.GLOBAL.last_focused_workspace ~= current
+      then
+        wezterm.GLOBAL.previous_workspace =
+          wezterm.GLOBAL.last_focused_workspace
       end
       wezterm.GLOBAL.last_focused_workspace = current
     end
@@ -78,7 +83,9 @@ function mod.apply_to_config(config)
         local _, expanded = helpers.normalize_workspace_name(workspace_name)
 
         local ws = ws_state.window_states and ws_state.window_states[1]
-        local has_saved_pixels = ws and ws.window_pixel_width and ws.window_pixel_height
+        local has_saved_pixels = ws
+          and ws.window_pixel_width
+          and ws.window_pixel_height
         -- Spawn window first; startup restore will wait for geometry to settle
         -- and then restore panes to avoid post-restore split reflow.
         local spawn_args = { workspace = workspace_name, cwd = expanded }
@@ -103,19 +110,29 @@ function mod.apply_to_config(config)
             local ok, err = pcall(function()
               local gui_win = window:gui_window()
               if gui_win then
-                gui_win:set_inner_size(ws.window_pixel_width, ws.window_pixel_height)
+                gui_win:set_inner_size(
+                  ws.window_pixel_width,
+                  ws.window_pixel_height
+                )
               else
                 error("missing gui_window while applying startup pixel size")
               end
             end)
             if not ok then
-              wezterm.log_warn("workspace_manager: failed to apply startup pixel size: " .. tostring(err))
+              wezterm.log_warn(
+                "workspace_manager: failed to apply startup pixel size: "
+                  .. tostring(err)
+              )
               do_restore()
               return
             end
-            state.wait_for_stable_window(window, 0.10, 2, 8, function()
-              do_restore()
-            end)
+            state.wait_for_stable_window(
+              window,
+              0.10,
+              2,
+              8,
+              function() do_restore() end
+            )
             return
           end
           do_restore()
@@ -126,7 +143,8 @@ function mod.apply_to_config(config)
 
   -- Key table for in-switcher actions (built from M.switcher_keys config)
   config.key_tables = config.key_tables or {}
-  config.key_tables.workspace_switcher_actions = actions.build_switcher_key_table()
+  config.key_tables.workspace_switcher_actions =
+    actions.build_switcher_key_table()
 
   -- Default keybindings (users can override by setting their own keys)
   local keys = config.keys or {}

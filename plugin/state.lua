@@ -1,7 +1,7 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
 
-local M_ref   -- reference to plugin config table (set via setup)
+local M_ref -- reference to plugin config table (set via setup)
 local helpers -- set via setup
 local history -- set via setup
 
@@ -13,7 +13,7 @@ local _tab_state_mod = nil
 local _file_io_mod = nil
 
 function mod.setup(plugin, deps)
-  M_ref   = plugin
+  M_ref = plugin
   helpers = deps.helpers
   history = deps.history
 end
@@ -28,9 +28,7 @@ local function get_session_modules()
 end
 
 function mod.get_state_dir()
-  if M_ref.session_state_dir then
-    return M_ref.session_state_dir
-  end
+  if M_ref.session_state_dir then return M_ref.session_state_dir end
   return history.HISTORY_DIR .. "/workspace_state"
 end
 
@@ -44,9 +42,7 @@ end
 function mod.is_excluded_workspace(name)
   local normalized = helpers.normalize_workspace_name(name)
   for _, excluded in ipairs(M_ref.session_exclude_workspaces) do
-    if normalized == excluded or name == excluded then
-      return true
-    end
+    if normalized == excluded or name == excluded then return true end
   end
   return false
 end
@@ -64,7 +60,10 @@ local function filename_to_workspace_name(filename)
 end
 
 local function get_state_file_path(workspace_name)
-  return mod.get_state_dir() .. "/" .. workspace_name_to_filename(workspace_name) .. ".json"
+  return mod.get_state_dir()
+    .. "/"
+    .. workspace_name_to_filename(workspace_name)
+    .. ".json"
 end
 
 function mod.get_most_recent_saved_workspace()
@@ -118,22 +117,31 @@ function mod.save_workspace_state(workspace_name, gui_win)
       end
       local path = get_state_file_path(workspace_name)
       file_io.write_state(path, state, "workspace")
-      wezterm.log_info("workspace_manager: saved state for workspace '" .. workspace_name .. "'")
+      wezterm.log_info(
+        "workspace_manager: saved state for workspace '"
+          .. workspace_name
+          .. "'"
+      )
     end
   end)
   if not ok then
-    wezterm.log_error("workspace_manager: failed to save state for '" .. workspace_name .. "': " .. tostring(err))
+    wezterm.log_error(
+      "workspace_manager: failed to save state for '"
+        .. workspace_name
+        .. "': "
+        .. tostring(err)
+    )
   end
 end
 
 function mod.load_workspace_state(workspace_name)
   local _, _, file_io = get_session_modules()
   local path = get_state_file_path(workspace_name)
-  local ok, state = pcall(function()
-    return file_io.load_json(path)
-  end)
+  local ok, state = pcall(function() return file_io.load_json(path) end)
   if ok and state and state.window_states then
-    wezterm.log_info("workspace_manager: loaded state for workspace '" .. workspace_name .. "'")
+    wezterm.log_info(
+      "workspace_manager: loaded state for workspace '" .. workspace_name .. "'"
+    )
     return state
   end
   return nil
@@ -143,7 +151,11 @@ function mod.delete_workspace_state(workspace_name)
   local path = get_state_file_path(workspace_name)
   local ok = os.remove(path)
   if ok then
-    wezterm.log_info("workspace_manager: deleted state file for workspace '" .. workspace_name .. "'")
+    wezterm.log_info(
+      "workspace_manager: deleted state file for workspace '"
+        .. workspace_name
+        .. "'"
+    )
   end
 end
 
@@ -157,7 +169,8 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
   local workspace_state_mod, tab_state_mod, _ = get_session_modules()
   local state = mod.load_workspace_state(workspace_name)
   if state then
-    local on_pane_restore = M_ref.session_on_pane_restore or tab_state_mod.default_on_pane_restore
+    local on_pane_restore = M_ref.session_on_pane_restore
+      or tab_state_mod.default_on_pane_restore
     local opts = {
       window = mux_window,
       relative = true,
@@ -170,16 +183,27 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
         opts[k] = v
       end
     end
-    local ok, err = pcall(function()
-      workspace_state_mod.restore_workspace(state, opts)
-    end)
+    local ok, err = pcall(
+      function() workspace_state_mod.restore_workspace(state, opts) end
+    )
     if not ok then
-      wezterm.log_error("workspace_manager: failed to restore state for '" .. workspace_name .. "': " .. tostring(err))
+      wezterm.log_error(
+        "workspace_manager: failed to restore state for '"
+          .. workspace_name
+          .. "': "
+          .. tostring(err)
+      )
     end
   end
 end
 
-function mod.wait_for_stable_window(window, interval_s, stable_samples, max_checks, on_ready)
+function mod.wait_for_stable_window(
+  window,
+  interval_s,
+  stable_samples,
+  max_checks,
+  on_ready
+)
   local checks = 0
   local stable_count = 0
   local last_w, last_h
@@ -188,14 +212,15 @@ function mod.wait_for_stable_window(window, interval_s, stable_samples, max_chec
     checks = checks + 1
     local ok, dims_or_err = pcall(function()
       local gui_win = window:gui_window()
-      if not gui_win then
-        error("missing gui_window")
-      end
+      if not gui_win then error("missing gui_window") end
       return gui_win:get_dimensions()
     end)
 
     if not ok then
-      wezterm.log_warn("workspace_manager: window stability wait aborted: " .. tostring(dims_or_err))
+      wezterm.log_warn(
+        "workspace_manager: window stability wait aborted: "
+          .. tostring(dims_or_err)
+      )
       on_ready(false)
       return
     end
@@ -218,7 +243,9 @@ function mod.wait_for_stable_window(window, interval_s, stable_samples, max_chec
     end
 
     if checks >= max_checks then
-      wezterm.log_warn("workspace_manager: window did not stabilize before timeout; continuing restore")
+      wezterm.log_warn(
+        "workspace_manager: window did not stabilize before timeout; continuing restore"
+      )
       on_ready(false)
       return
     end
@@ -235,9 +262,7 @@ function mod.get_saved_workspace_names()
   local names = {}
 
   local ok, entries = pcall(wezterm.read_dir, state_dir)
-  if not ok or not entries then
-    return names
-  end
+  if not ok or not entries then return names end
 
   -- Build set of live workspace names (normalized)
   local live_set = {}
@@ -252,7 +277,11 @@ function mod.get_saved_workspace_names()
     if filename and filename:match("%.json$") then
       local ws_name = filename_to_workspace_name(filename)
       local normalized = helpers.normalize_workspace_name(ws_name)
-      if not live_set[ws_name] and not live_set[normalized] and not mod.is_excluded_workspace(ws_name) then
+      if
+        not live_set[ws_name]
+        and not live_set[normalized]
+        and not mod.is_excluded_workspace(ws_name)
+      then
         table.insert(names, ws_name)
       end
     end

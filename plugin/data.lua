@@ -1,16 +1,16 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
 
-local M_ref   -- reference to plugin config table (set via setup)
+local M_ref -- reference to plugin config table (set via setup)
 local helpers -- set via setup
-local state   -- set via setup
+local state -- set via setup
 
 local mod = {}
 
 function mod.setup(plugin, deps)
-  M_ref   = plugin
+  M_ref = plugin
   helpers = deps.helpers
-  state   = deps.state
+  state = deps.state
 end
 
 function mod.get_workspace_choices()
@@ -26,7 +26,7 @@ function mod.get_workspace_choices()
       normalized = normalized,
       is_workspace = true,
       is_saved = false,
-      access_time = access_times[normalized] or 0
+      access_time = access_times[normalized] or 0,
     })
   end
 
@@ -40,14 +40,12 @@ function mod.get_workspace_choices()
         normalized = normalized,
         is_workspace = true,
         is_saved = true,
-        access_time = access_times[normalized] or access_times[ws_name] or 0
+        access_time = access_times[normalized] or access_times[ws_name] or 0,
       })
     end
   end
 
-  table.sort(choices, function(a, b)
-    return a.access_time > b.access_time
-  end)
+  table.sort(choices, function(a, b) return a.access_time > b.access_time end)
 
   return choices
 end
@@ -66,9 +64,10 @@ function mod.get_workspace_cycle_order()
   end
 
   -- Sort alphabetically (case-insensitive) for predictable cycling
-  table.sort(choices, function(a, b)
-    return a.normalized:lower() < b.normalized:lower()
-  end)
+  table.sort(
+    choices,
+    function(a, b) return a.normalized:lower() < b.normalized:lower() end
+  )
 
   return choices
 end
@@ -76,9 +75,10 @@ end
 -- Returns workspace choices sorted alphabetically, including saved workspaces when session is enabled
 function mod.get_workspace_choices_alphabetical()
   local choices = mod.get_workspace_choices()
-  table.sort(choices, function(a, b)
-    return a.normalized:lower() < b.normalized:lower()
-  end)
+  table.sort(
+    choices,
+    function(a, b) return a.normalized:lower() < b.normalized:lower() end
+  )
   return choices
 end
 
@@ -89,7 +89,9 @@ end
 function mod.get_zoxide_paths(limit)
   local paths = {}
   local success, stdout, _ = wezterm.run_child_process({
-    M_ref.zoxide_path, "query", "-l"
+    M_ref.zoxide_path,
+    "query",
+    "-l",
   })
   if success then
     for _, path in ipairs(wezterm.split_by_newlines(stdout)) do
@@ -105,7 +107,9 @@ end
 function mod.get_zoxide_choices(workspace_normalized_set)
   local choices = {}
   local success, stdout, _ = wezterm.run_child_process({
-    M_ref.zoxide_path, "query", "-l"
+    M_ref.zoxide_path,
+    "query",
+    "-l",
   })
 
   if success then
@@ -117,7 +121,7 @@ function mod.get_zoxide_choices(workspace_normalized_set)
             id = path,
             label = normalized,
             normalized = normalized,
-            is_workspace = false
+            is_workspace = false,
           })
         end
       end
@@ -128,9 +132,7 @@ function mod.get_zoxide_choices(workspace_normalized_set)
 end
 
 function mod.get_custom_choices(workspace_normalized_set)
-  if M_ref.get_choices == false then
-    return {}, false, {}
-  end
+  if M_ref.get_choices == false then return {}, false, {} end
 
   if type(M_ref.get_choices) == "function" then
     local raw = M_ref.get_choices() or {}
@@ -148,9 +150,7 @@ function mod.get_custom_choices(workspace_normalized_set)
         label = entry.label
       end
       if name then
-        if label then
-          label_overrides[name] = label
-        end
+        if label then label_overrides[name] = label end
         local normalized = helpers.normalize_workspace_name(name)
         if not workspace_normalized_set[normalized] then
           table.insert(choices, {
@@ -177,9 +177,7 @@ function mod.get_workspace_counts()
 
   for _, mux_win in ipairs(mux.all_windows()) do
     local ws = mux_win:get_workspace()
-    if not counts[ws] then
-      counts[ws] = { windows = 0, tabs = 0, panes = 0 }
-    end
+    if not counts[ws] then counts[ws] = { windows = 0, tabs = 0, panes = 0 } end
     counts[ws].windows = counts[ws].windows + 1
     for _, tab in ipairs(mux_win:tabs()) do
       counts[ws].tabs = counts[ws].tabs + 1
@@ -196,9 +194,7 @@ function mod.format_counts(counts, format)
   local parts = {}
 
   if format == "compact" then
-    if counts.windows > 1 then
-      table.insert(parts, counts.windows .. "w")
-    end
+    if counts.windows > 1 then table.insert(parts, counts.windows .. "w") end
     if counts.tabs > 1 or counts.windows > 1 then
       table.insert(parts, counts.tabs .. "t")
     end
@@ -228,21 +224,32 @@ end
 ---@param workspace string
 ---@return MuxWindow
 function mod.get_current_mux_window(workspace)
-  wezterm.log_info("get_current_mux_window called for workspace: " .. tostring(workspace))
+  wezterm.log_info(
+    "get_current_mux_window called for workspace: " .. tostring(workspace)
+  )
   local all_wins = mux.all_windows()
   wezterm.log_info("Total mux windows: " .. tostring(#all_wins))
 
   for _, mux_win in ipairs(all_wins) do
     local ws = mux_win:get_workspace()
-    wezterm.log_info("Checking mux_win workspace: " .. tostring(ws) .. " against " .. tostring(workspace))
+    wezterm.log_info(
+      "Checking mux_win workspace: "
+        .. tostring(ws)
+        .. " against "
+        .. tostring(workspace)
+    )
     if ws == workspace then
       wezterm.log_info("Found matching MuxWindow!")
       wezterm.log_info("MuxWindow type: " .. tostring(type(mux_win)))
-      wezterm.log_info("Has gui_window method: " .. tostring(type(mux_win.gui_window)))
+      wezterm.log_info(
+        "Has gui_window method: " .. tostring(type(mux_win.gui_window))
+      )
       return mux_win
     end
   end
-  wezterm.log_error("Could not find a workspace with the name: " .. tostring(workspace))
+  wezterm.log_error(
+    "Could not find a workspace with the name: " .. tostring(workspace)
+  )
   error("Could not find a workspace with the name: " .. workspace)
 end
 

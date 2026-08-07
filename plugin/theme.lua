@@ -10,14 +10,10 @@ local DEFAULT_COLORS = {
   muted = "#888888",
 }
 
-function mod.setup(plugin)
-  M_ref = plugin
-end
+function mod.setup(plugin) M_ref = plugin end
 
 function mod.get_color(key)
-  if M_ref.colors and M_ref.colors[key] ~= nil then
-    return M_ref.colors[key]
-  end
+  if M_ref.colors and M_ref.colors[key] ~= nil then return M_ref.colors[key] end
   return DEFAULT_COLORS[key]
 end
 
@@ -54,7 +50,10 @@ end
 --   workspace: workspace_<seg>
 local function resolve_label_color(segment, category)
   if category == "current" then
-    return resolve_color("workspace_" .. segment .. "_current", "workspace_" .. segment)
+    return resolve_color(
+      "workspace_" .. segment .. "_current",
+      "workspace_" .. segment
+    )
   elseif category == "entry" then
     return resolve_color("entry_" .. segment, "workspace_" .. segment)
   else
@@ -86,7 +85,11 @@ function mod.build_switcher_label(icon, name, counts, category)
   mod.append_segment(items, name, resolve_label_color("name", category))
   mod.append_segment(items, counts, resolve_label_color("counts", category))
   if category == "current" then
-    mod.append_segment(items, " (current)", resolve_color("workspace_current_marker", "prompt_accent"))
+    mod.append_segment(
+      items,
+      " (current)",
+      resolve_color("workspace_current_marker", "prompt_accent")
+    )
   end
   table.insert(items, "ResetAttributes")
   return wezterm.format(items)
