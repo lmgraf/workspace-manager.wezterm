@@ -24,6 +24,41 @@ The switcher presents three categories of entries:
 - **Saved workspaces**: a workspace that has state on disk but isn't currently running. This happens when WezTerm exits (or crashes) before you explicitly deleted the workspace. State is written to disk when you switch away, on a periodic timer, or via a manual save. These appear in the switcher when `session_enabled = true` so you can pick up where you left off. Selecting one spawns a new workspace and restores its full layout. Deleting a workspace via `Ctrl+D` removes both the live workspace and its state file, so it won't reappear.
 - **Suggestions**: directories from zoxide history by default, or a custom `get_choices` provider. Not workspaces yet. Selecting one creates a new workspace at that path. Set `get_choices = false` to disable suggestions entirely.
 
+Each row starts with a status prefix. Choose circles with `workspace_status_format = "icons"` (the default), or equal-width tags with `"words"`:
+
+```text
+● project-a (2t 3p)  current
+● project-b
+○ project-c
+· ~/projects/new-project
+```
+
+```text
+[live] project-a (2t 3p)  current
+[live] project-b
+[disk] project-c
+[path] ~/projects/new-project
+```
+
+Live workspace counts appear after the name. Use `workspace_count_format` to choose compact or full counts, or set it to `nil` to hide them.
+
+Green `●` / `[live]` means running in the mux. Magenta/violet `○` / `[disk]` means saved only on disk. These colors reference the active scheme's ANSI green and magenta slots, rather than fixed RGB values. `·` / `[path]` uses the terminal's default foreground and marks a directory or custom suggestion. When the current workspace is shown, its row ends with `current`.
+
+Only the icon or word prefix uses the status color. Names, counts, spacing, and the current marker keep their own styles. WezTerm draws the leading indent and shortcut column before the plugin label.
+
+Names align after one status column with a single separating space. Custom icon widths use terminal columns, including wide glyphs; surrounding whitespace is ignored. Icon overrides apply only in `"icons"` mode.
+
+```lua
+workspace_manager.workspace_status_format = "icons" -- or "words"
+workspace_manager.colors = {
+  workspace_status_live = "Green",   -- active scheme's ANSI green
+  workspace_status_saved = "Purple", -- active scheme's ANSI magenta
+  -- Omit workspace_status_path to use the terminal foreground.
+}
+```
+
+These are the defaults; no color configuration is required to follow your scheme. The color keys apply to both formats and still accept explicit overrides. Add overrides to your existing `workspace_manager.colors` table if you already customize other colors.
+
 ### Session lifecycle
 
 State is saved to disk automatically when you switch away from a workspace, on a periodic timer (every 10 minutes by default), and manually by binding `save_workspace()` to a key. A "saved" workspace is just a JSON state file on disk with no process running. State files can accumulate over time: quitting WezTerm, a crash, or a periodic save all write state that persists until you explicitly delete the workspace via `Ctrl+D` in the switcher (which removes both the running workspace and its state file) or until `session_exclude_workspaces` is set to prevent saves.
@@ -131,9 +166,11 @@ config.keys = {
 | `workspace_switcher_sort` | string | `"recency"` | Sort order: `"recency"` (most recent first) or `"alphabetical"` |
 | `switcher_keys` | table | `nil` | Override in-switcher action key bindings (see [Switcher Keys](#switcher-keys)) |
 | `show_switcher_hints` | boolean | `true` | Show action key hints in the switcher description bar (both modes). Set to `false` to hide (use `get_switcher_legend()` instead) |
-| `workspace_icon` | string | `"󱂬  "` | Icon glyph for workspace entries in the switcher |
+| `workspace_status_format` | string | `"icons"` | Status prefixes: `"icons"` (● / ○ / ·) or `"words"` ([live] / [disk] / [path]) |
+| `workspace_icon` | string | `"●"` | Live workspace status icon; used only in icons mode |
 | `workspace_icon_current` | string | `nil` | Icon glyph for the active workspace (falls back to `workspace_icon`) |
-| `entry_icon` | string | `"  "` | Icon glyph for custom/zoxide entries in the switcher |
+| `workspace_icon_saved` | string | `"○"` | Saved workspace status icon; used only in icons mode |
+| `entry_icon` | string | `"·"` | Custom/zoxide status icon; used only in icons mode |
 | `colors` | table | `nil` | Override theme colors (see [Styling](#styling)) |
 
 **Session persistence options** (requires `session_enabled = true`):
@@ -257,17 +294,27 @@ workspace_name = {
 |-----|---------|----------|
 | `prompt_accent` | `"Lime"` | Workspace name/path text in prompt descriptions, e.g. the `~/ws` in the switcher description and `"Renaming: ~/ws"` |
 | `prompt_heading` | Bold | Label text surrounding the accent, e.g. `"Renaming:"`, `"Directory does not exist:"` |
-| `muted` | `"#888888"` | Secondary text: switcher legend and keyboard shortcut hints in description bars |
+| `muted` | `"Grey"` | Scheme's ANSI bright-black slot for secondary text: switcher legend and keyboard shortcut hints |
 
 **Switcher label segments** (each segment of a label can be styled independently per entry category):
 
-The switcher has three entry categories: workspace entries (non-active), the current active workspace, and custom/zoxide entries (not yet workspaces). Each category's segments can be colored independently.
+Status colors apply only to the icon or word prefix in both modes. Names, counts, and current markers retain their separate segment styles.
+
+*Status prefix colors:*
+
+| Key | Default | Used for |
+|-----|---------|----------|
+| `workspace_status_live` | `"Green"` | Scheme's ANSI green for running workspaces, including the current workspace |
+| `workspace_status_saved` | `"Purple"` | Scheme's ANSI magenta for workspaces that exist only on disk |
+| `workspace_status_path` | `nil` | · / `[path]` for directory and custom suggestions (terminal foreground) |
+
+Explicit status color overrides take precedence over icon segment colors. In icons mode, existing `workspace_icon`, `workspace_icon_current`, and `entry_icon` color overrides supply the prefix color when no matching status color override is set. Word prefixes ignore icon segment colors. Both formats inherit the selector's reverse-video highlight.
 
 *Non-active workspace entries:*
 
 | Key | Default | Used for |
 |-----|---------|----------|
-| `workspace_icon` | `nil` | Icon glyph (terminal default) |
+| `workspace_icon` | `nil` | Icon color override for live and saved workspaces (icons mode) |
 | `workspace_name` | `nil` | Workspace name (terminal default) |
 | `workspace_counts` | `nil` | Count suffix, e.g. `(2w 3t 5p)` (terminal default) |
 
@@ -278,7 +325,7 @@ The switcher has three entry categories: workspace entries (non-active), the cur
 | `workspace_icon_current` | `nil` | Icon glyph |
 | `workspace_name_current` | `nil` | Workspace name |
 | `workspace_counts_current` | `nil` | Count suffix |
-| `workspace_current_marker` | `nil` | ` (current)` text appended to the label, falls back to `prompt_accent` |
+| `workspace_current_marker` | `nil` | `current` text after the name, falls back to `prompt_accent` |
 
 *Custom/zoxide entries, each falls back to the matching `workspace_*` key:*
 
@@ -294,8 +341,9 @@ workspace_manager.colors = {
   muted = "#6272a4",
 }
 
--- Dim counts with Half intensity (avoids InputSelector selection highlight clash)
+-- Dim saved prefixes and counts with Half intensity
 workspace_manager.colors = {
+  workspace_status_saved = { { Attribute = { Intensity = "Half" } } },
   workspace_counts = { { Attribute = { Intensity = "Half" } } },
 }
 
@@ -304,8 +352,10 @@ workspace_manager.colors = {
   prompt_accent            = "#50fa7b",
   workspace_name           = "#f8f8f2",                              -- non-active workspace names
   workspace_counts         = { { Attribute = { Intensity = "Half" } } },
+  workspace_status_live    = "#50fa7b",                              -- live prefix
+  workspace_status_saved   = "#bd93f9",                              -- saved prefix
   workspace_name_current   = "#50fa7b",                              -- active workspace name
-  workspace_current_marker = "#50fa7b",                              -- "(current)" marker
+  workspace_current_marker = "#50fa7b",                              -- "current" marker
   entry_name               = "#6272a4",                              -- custom/zoxide entry names
 }
 ```

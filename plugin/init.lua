@@ -42,9 +42,11 @@ M.switcher_keys = nil -- Override in-switcher action key bindings. Table mapping
 -- e.g. { delete = { key = "x", mods = "CTRL" }, rename = false }
 M.show_switcher_hints = true -- Show action key hints in the switcher description bar (both fuzzy and non-fuzzy modes).
 -- Set to false to hide hints from the description (use get_switcher_legend() instead).
-M.workspace_icon = nil -- Icon glyph for workspace entries (default: "󱂬  ")
+M.workspace_status_format = "icons" -- "icons" (● / ○ / ·) or "words" ([live] / [disk] / [path])
+M.workspace_icon = nil -- Live workspace status icon (default: "●")
 M.workspace_icon_current = nil -- Icon glyph for the active workspace (default: falls back to workspace_icon)
-M.entry_icon = nil -- Icon glyph for custom/zoxide entries (default: "  ")
+M.workspace_icon_saved = nil -- Saved workspace status icon (default: "○")
+M.entry_icon = nil -- Status icon for custom/zoxide entries (default: "·")
 M.colors = nil -- Override theme colors.
 -- All keys accept a color string (AnsiColor name or "#hex") as a foreground color,
 -- or a FormatItem list for full control over fg, bg, intensity, etc.
@@ -53,18 +55,23 @@ M.colors = nil -- Override theme colors.
 --   Prompt styling:
 --   prompt_accent:  workspace name/path text in descriptions, e.g. "~/ws" in the switcher and "Renaming: ~/ws" (default: "Lime")
 --   prompt_heading: label text in prompts, e.g. "Renaming:", "Directory does not exist:" (default: Bold)
---   muted:          secondary text like the switcher legend and shortcut hints (default: "#888888")
+--   muted:          secondary text like the switcher legend and shortcut hints (default: ANSI Grey)
 --
 --   Non-active workspace entries:
---   workspace_icon:   icon glyph (default: nil = terminal default)
+--   workspace_icon:   icon color override in icons mode (default: nil)
 --   workspace_name:   workspace name (default: nil = terminal default)
 --   workspace_counts: count suffix, e.g. "(2w 3t 5p)" (default: nil = terminal default)
+--
+--   Status colors apply only to the icon or word prefix in both formats.
+--   workspace_status_live:  ● or [live] (default: scheme's ANSI Green)
+--   workspace_status_saved: ○ or [disk] (default: scheme's ANSI Purple/magenta)
+--   workspace_status_path:  · or [path] (default: terminal foreground)
 --
 --   Active (current) workspace — falls back to workspace_*:
 --   workspace_icon_current:   icon glyph
 --   workspace_name_current:   workspace name
 --   workspace_counts_current: count suffix
---   workspace_current_marker: " (current)" text appended to the label (falls back to prompt_accent)
+--   workspace_current_marker: "current" text after the name (falls back to prompt_accent)
 --
 --   Custom/zoxide entries — falls back to workspace_*:
 --   entry_icon: icon glyph

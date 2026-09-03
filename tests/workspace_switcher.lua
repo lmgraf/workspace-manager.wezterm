@@ -3,6 +3,7 @@
 local runtime = require("wezterm")
 local root = runtime.config_dir .. "/../plugin/"
 local current, selector, prompt, timers, calls, settings, actions
+local formatted
 local directory_exists, mkdir_ok, zoxide, excluded, saved_focus
 local window, pane = {}, {}
 local function record(kind, ...)
@@ -20,7 +21,9 @@ local function format(parts)
   for _, part in ipairs(parts) do
     if part.Text then table.insert(text, part.Text) end
   end
-  return table.concat(text)
+  local label = table.concat(text):gsub("\27%[[%d;]*m", "")
+  formatted[label] = parts
+  return label
 end
 local fake = {
   home_dir = "/home/test",
@@ -33,6 +36,7 @@ local fake = {
   action_callback = function(callback) return callback end,
   emit = function(name, ...) record(name, ...) end,
   format = format,
+  column_width = runtime.column_width,
   log_info = function() end,
   log_warn = function() end,
   json_parse = function() return { { workspace = "B", pane_id = 20 } } end,
@@ -89,14 +93,6 @@ local function workspace_choices()
   return result
 end
 local deps = {
-  theme = {
-    fg = function() return {} end,
-    get_color = function() return "" end,
-    build_heading = function(text) return { { Text = text } } end,
-    build_switcher_label = function(icon, label, counts, category)
-      return category .. ":" .. icon .. label .. counts
-    end,
-  },
   helpers = {
     normalize_workspace_name = normalize,
     get_workspace_name_and_path = normalize,
@@ -153,19 +149,23 @@ local deps = {
         { id = "~/raw", normalized = "~/raw", label = "Raw path" },
       }, zoxide, { A = "Current label", B = "Other label" }
     end,
-    get_workspace_counts = function() return { B = { tabs = 2 } } end,
-    format_counts = function(counts) return " (" .. counts.tabs .. ")" end,
     get_current_mux_window = function(name) return "mux:" .. name end,
+    get_workspace_counts = function()
+      return { B = { windows = 1, tabs = 2, panes = 3 } }
+    end,
   },
 }
 local function reset()
   current, selector, prompt = "A", nil, nil
-  timers, calls = {}, {}
+  timers, calls, formatted = {}, {}, {}
   directory_exists, mkdir_ok, zoxide = true, true, false
   excluded, saved_focus = nil, false
   fake.GLOBAL = { workspace_access_times = { A = 1, B = 2, Saved = 3 } }
   settings = { session_enabled = true, zoxide_path = "zoxide" }
   package.loaded.wezterm = fake
+  deps.theme = assert(loadfile(root .. "theme.lua"))()
+  deps.theme.setup(settings)
+  deps.data.format_counts = assert(loadfile(root .. "data.lua"))().format_counts
   actions = assert(loadfile(root .. "actions.lua"))()
   actions.setup(settings, deps)
 end
@@ -230,7 +230,7 @@ settings.workspace_switcher_sort = "alphabetical"
 settings.show_current_workspace_in_switcher = true
 settings.show_current_workspace_hint = true
 settings.show_switcher_hints = true
-settings.workspace_count_format = "tabs"
+settings.workspace_count_format = "full"
 settings.workspace_icon, settings.workspace_icon_current = "W ", "C "
 settings.entry_icon = "E "
 settings.start_in_fuzzy_mode = true
@@ -240,9 +240,11 @@ settings.switcher_keys = {
 }
 open()
 assert(#recorded("alphabetical") == 1 and selector.fuzzy)
-assert(selector.choices[1].label == "current:C Current label")
-assert(selector.choices[2].label == "workspace:W Other label (2)")
-assert(selector.choices[4].label == "entry:E Named")
+assert(selector.choices[1].label == "C Current label  current")
+assert(selector.choices[2].label == "W Other label (2 tabs, 3 panes)")
+assert(selector.choices[3].label == "○ Saved")
+assert(selector.choices[4].label == "E Named")
+assert(selector.choices[1].id == "A" and selector.choices[3].id == "Saved")
 assert(
   selector.description
     == "Current label | M-a=new ^P=path ^R=rename | Esc=cancel"
@@ -251,6 +253,89 @@ assert(
   selector.fuzzy_description
     == "Current label | M-a=new ^P=path ^R=rename | Switch to: "
 )
+settings.workspace_count_format = "compact"
+open()
+assert(selector.choices[2].label == "W Other label (2t 3p)")
+settings.workspace_count_format = nil
+open()
+assert(selector.choices[2].label == "W Other label")
+
+-- Status prefixes use the category color and inherit native selection.
+local function check_prefix(index, prefix, expected_color)
+  local parts = formatted[selector.choices[index].label]
+  local found = false
+  local foreground
+  for _, part in ipairs(parts) do
+    if part == "ResetAttributes" then foreground = nil end
+    if part.Foreground then
+      foreground = part.Foreground.AnsiColor or part.Foreground.Color
+    end
+    if part.Text then
+      assert(not part.Text:find("\27", 1, true))
+      if part.Text == prefix then
+        assert(foreground == expected_color)
+        found = true
+      end
+    end
+  end
+  assert(found)
+  -- Also validate FormatItems against WezTerm's actual formatter.
+  local escaped = runtime.format(parts)
+  assert(escaped:find(prefix, 1, true))
+  assert(not escaped:find("\27[27m", 1, true), string.format("%q", escaped))
+end
+
+settings.workspace_icon, settings.workspace_icon_current = nil, nil
+settings.entry_icon = nil
+for _, format in ipairs({ "icons", "words" }) do
+  settings.workspace_status_format = format
+  settings.workspace_count_format = "compact"
+  settings.colors = nil
+  open()
+  local prefixes = format == "icons" and { "●", "○", "·" }
+    or { "[live]", "[disk]", "[path]" }
+  assert(selector.choices[1].label == prefixes[1] .. " Current label  current")
+  assert(selector.choices[2].label == prefixes[1] .. " Other label (2t 3p)")
+  assert(selector.choices[3].label == prefixes[2] .. " Saved")
+  assert(selector.choices[4].label == prefixes[3] .. " Named")
+  check_prefix(1, prefixes[1], "Green")
+  check_prefix(2, prefixes[1], "Green")
+  check_prefix(3, prefixes[2], "Purple")
+  check_prefix(4, prefixes[3], nil)
+
+  settings.colors = {
+    workspace_status_live = "Green",
+    workspace_status_saved = "#ff9e64",
+    workspace_status_path = { { Foreground = { Color = "#e0af68" } } },
+    workspace_icon = "Red",
+    workspace_name = "Blue",
+    workspace_current_marker = "Yellow",
+  }
+  open()
+  check_prefix(2, prefixes[1], "Green")
+  check_prefix(3, prefixes[2], "#ff9e64")
+  check_prefix(4, prefixes[3], "#e0af68")
+end
+settings.workspace_status_format = "invalid"
+local ok, err = pcall(open)
+assert(not ok and err:find("workspace_status_format", 1, true))
+
+-- Empty suggestion icons and wide custom icons still align names.
+settings.workspace_status_format = "icons"
+settings.workspace_count_format = nil
+settings.workspace_icon, settings.workspace_icon_current = "界  ", "C "
+settings.workspace_icon_saved = "◇"
+settings.entry_icon = ""
+open()
+assert(selector.choices[1].label == "C  Current label  current")
+assert(selector.choices[2].label == "界 Other label")
+assert(selector.choices[3].label == "◇  Saved")
+assert(selector.choices[4].label == "   Named")
+settings.workspace_status_format = "words"
+open()
+assert(selector.choices[2].label == "[live] Other label")
+assert(selector.choices[3].label == "[disk] Saved")
+assert(selector.choices[4].label == "[path] Named")
 reset()
 settings.filter_choices = { "/home/test/raw" }
 open()

@@ -439,9 +439,11 @@ local function format_workspace_choice(context, choice, is_current)
 
   local display_label = context.label_overrides[choice.id] or choice.label
   local category = is_current and "current" or "workspace"
-  local ws_icon = M_ref.workspace_icon or "󱂬  "
+  if choice.is_saved and not is_current then category = "saved" end
+  local ws_icon = M_ref.workspace_icon or "●"
   local icon = is_current and (M_ref.workspace_icon_current or ws_icon)
     or ws_icon
+  if category == "saved" then icon = M_ref.workspace_icon_saved or "○" end
   return {
     id = choice.id,
     label = theme.build_switcher_label(
@@ -472,7 +474,7 @@ local function build_switcher_choices(context)
       table.insert(choices, {
         id = choice.id,
         label = theme.build_switcher_label(
-          M_ref.entry_icon or "  ",
+          M_ref.entry_icon or "·",
           choice.label,
           "",
           "entry"
