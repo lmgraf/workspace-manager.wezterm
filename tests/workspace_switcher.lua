@@ -81,7 +81,8 @@ local function normalize(name)
 end
 local function workspace_choices()
   local result = {}
-  for _, name in ipairs({ "A", "B", "Saved" }) do
+  -- Deliberately place saved and other live entries before the current one.
+  for _, name in ipairs({ "Saved", "B", "A" }) do
     table.insert(result, {
       id = name,
       normalized = name,

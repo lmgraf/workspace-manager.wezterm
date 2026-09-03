@@ -458,16 +458,28 @@ end
 local function build_switcher_choices(context)
   local filter = get_switcher_filter()
   local choices = {}
+  local current_choices = {}
+  local live_choices = {}
+  local saved_choices = {}
   for _, choice in ipairs(context.workspace_choices) do
     local is_current = choice.id == context.current_workspace
     local is_visible = not is_current
       or M_ref.show_current_workspace_in_switcher
     if is_visible and (not filter or filter(choice)) then
-      table.insert(
-        choices,
-        format_workspace_choice(context, choice, is_current)
-      )
+      local group = is_current and current_choices
+        or choice.is_saved and saved_choices
+        or live_choices
+      table.insert(group, format_workspace_choice(context, choice, is_current))
     end
+  end
+  for _, choice in ipairs(current_choices) do
+    table.insert(choices, choice)
+  end
+  for _, choice in ipairs(live_choices) do
+    table.insert(choices, choice)
+  end
+  for _, choice in ipairs(saved_choices) do
+    table.insert(choices, choice)
   end
   for _, choice in ipairs(context.custom_choices) do
     if not filter or filter(choice) then

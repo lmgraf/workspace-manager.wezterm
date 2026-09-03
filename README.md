@@ -26,6 +26,8 @@ The switcher presents three categories of entries:
 
 Each row starts with a status prefix. Choose circles with `workspace_status_format = "icons"` (the default), or equal-width tags with `"words"`:
 
+When shown, the current workspace appears first. Other live workspaces follow, then saved workspaces, then path suggestions. The configured recency or alphabetical order is preserved within each group.
+
 ```text
 ● project-a (2t 3p)  current
 ● project-b
@@ -163,7 +165,7 @@ config.keys = {
 | `notifications_enabled` | boolean | `false` | Enable toast notifications (requires code-signed wezterm on macOS) |
 | `workspace_count_format` | string | `"compact"` | Display workspace counts: `nil` (disabled), `"compact"` (2w 3t 5p), or `"full"` (2 wins, 3 tabs, 5 panes) |
 | `use_basename_for_workspace_names` | boolean | `false` | Use directory basename instead of full path (falls back for duplicates) |
-| `workspace_switcher_sort` | string | `"recency"` | Sort order: `"recency"` (most recent first) or `"alphabetical"` |
+| `workspace_switcher_sort` | string | `"recency"` | Sort within each group: `"recency"` (most recent first) or `"alphabetical"`; live workspaces always precede saved workspaces |
 | `switcher_keys` | table | `nil` | Override in-switcher action key bindings (see [Switcher Keys](#switcher-keys)) |
 | `show_switcher_hints` | boolean | `true` | Show action key hints in the switcher description bar (both modes). Set to `false` to hide (use `get_switcher_legend()` instead) |
 | `workspace_status_format` | string | `"icons"` | Status prefixes: `"icons"` (● / ○ / ·) or `"words"` ([live] / [disk] / [path]) |
