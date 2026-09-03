@@ -116,16 +116,76 @@ function pub.restore_tab(tab, tab_state, opts)
   if acc.active_pane then acc.active_pane:activate() end
 end
 
---- Function to restore text or processes when restoring panes
+---Wait for a newly created pane's geometry and shell output to settle.
+---@param pane_tree pane_tree
+---@param on_pane_restore function
+function pub.restore_pane_when_stable(pane_tree, on_pane_restore)
+  local previous, stable_count, checks = nil, 0, 0
+
+  local function sample()
+    checks = checks + 1
+    local ok, err = pcall(function()
+      local pane = pane_tree.pane
+      local dims = pane:get_dimensions()
+      local cursor = pane:get_cursor_position()
+      local screen = pane:get_lines_as_text()
+      local current = table.concat({
+        dims.cols,
+        dims.viewport_rows,
+        cursor.x,
+        cursor.y - dims.physical_top,
+        screen,
+      }, "\n")
+      if current == previous and screen:find("%S") then
+        stable_count = stable_count + 1
+      else
+        stable_count = 0
+      end
+      previous = current
+
+      -- Blank panes may still be waiting for PowerShell/ConPTY to initialize.
+      -- Bound the wait for shells that don't print a prompt or keep updating it.
+      if stable_count >= 5 or checks >= 50 then
+        on_pane_restore(pane_tree)
+      else
+        wezterm.time.call_after(0.1, sample)
+      end
+    end)
+    if not ok then
+      wezterm.log_warn(
+        "workspace_manager: deferred pane restore failed: " .. tostring(err)
+      )
+    end
+  end
+
+  wezterm.time.call_after(0.1, sample)
+end
+
+---Restore saved scrollback without sending commands to the new shell.
 ---@param pane_tree pane_tree
 function pub.default_on_pane_restore(pane_tree)
   local pane = pane_tree.pane
 
-  -- Spawn process if using alt screen, otherwise restore text
-  if pane_tree.alt_screen_active then
-    pane:send_text(wezterm.shell_join_args(pane_tree.process.argv) .. "\r\n")
-  elseif pane_tree.text then
-    pane:inject_output(pane_tree.text:gsub("%s+$", ""))
+  if pane_tree.text then
+    local text = pane_tree.text:gsub("%s+$", "")
+    if text == "" then return end
+
+    local rows = pane:get_dimensions().viewport_rows
+    local screen = pane:get_lines_as_escapes(rows):gsub("%s+$", "")
+
+    -- Output injection bypasses the shell (and ConPTY on Windows). Keep
+    -- its live screen and cursor intact so the next prompt redraw cannot
+    -- overwrite restored history. ESC 7/8 also preserve cursor attributes.
+    pane:inject_output(
+      "\x1b7\x1b[H\x1b[0m\x1b[2J"
+        .. text
+        -- Push every restored line above the live viewport, then repaint it.
+        .. "\x1b[0m"
+        .. string.rep("\r\n", rows)
+        .. "\x1b[H"
+        .. screen
+        .. "\x1b8"
+    )
   end
 end
 

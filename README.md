@@ -146,7 +146,7 @@ config.keys = {
 | `session_max_scrollback_lines` | number | `3500` | Max scrollback lines to capture per pane |
 | `session_exclude_workspaces` | table | `{"default"}` | Workspace names to never save or restore. `"default"` is excluded by default because it's WezTerm's built-in fallback workspace and rarely worth persisting. |
 | `session_state_dir` | string | `nil` | Override state directory (default: `~/.local/share/wezterm/workspace_state/`) |
-| `session_on_pane_restore` | function | `nil` | Custom per-pane restore callback (default: replays processes / injects scrollback) |
+| `session_on_pane_restore` | function | `nil` | Custom per-pane restore callback (default: injects saved scrollback) |
 | `session_restore_on_startup` | boolean | `false` | Automatically restore the most recently used workspace when WezTerm starts |
 
 ### Actions
@@ -347,6 +347,17 @@ That's it. With `session_enabled = true`:
 - **Deleting a workspace** removes its saved state so it won't reappear
 
 With `session_restore_on_startup = true`, WezTerm also opens directly into your most recently used workspace on launch instead of the default workspace.
+
+Restored scrollback is placed above the new shell's live screen; scroll up to
+read it. The live prompt and cursor stay in place so shell redraws (including
+PowerShell on Windows) cannot overwrite the restored text.
+On startup, pane restoration waits for the recreated layout and shell output
+to settle before injecting scrollback.
+
+Restoration does not execute saved commands or restart applications. Process
+metadata in older state files is ignored by the default restore callback.
+Panes saved while an application uses the alternate screen have no captured
+normal-screen scrollback and reopen with a fresh shell.
 
 ### State Location
 

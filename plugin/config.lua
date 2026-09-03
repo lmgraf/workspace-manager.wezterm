@@ -100,6 +100,7 @@ function mod.apply_to_config(config)
             relative = true,
             close_open_panes = true,
             resize_window = false,
+            defer_pane_restore = true,
           })
           history.update_access_time(workspace_name)
           wezterm.GLOBAL.last_focused_workspace = workspace_name

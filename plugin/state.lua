@@ -183,6 +183,13 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
         opts[k] = v
       end
     end
+    local pending_panes = {}
+    local restore_pane = opts.on_pane_restore
+    if opts.defer_pane_restore then
+      opts.on_pane_restore = function(pane_tree)
+        table.insert(pending_panes, pane_tree)
+      end
+    end
     local ok, err = pcall(
       function() workspace_state_mod.restore_workspace(state, opts) end
     )
@@ -193,6 +200,12 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
           .. "': "
           .. tostring(err)
       )
+    elseif opts.defer_pane_restore then
+      -- Startup creates and resizes new panes after the initial window wait.
+      -- Start these waits only once the full layout has been constructed.
+      for _, pane_tree in ipairs(pending_panes) do
+        tab_state_mod.restore_pane_when_stable(pane_tree, restore_pane)
+      end
     end
   end
 end

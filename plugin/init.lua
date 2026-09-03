@@ -1,18 +1,18 @@
 local wezterm = require("wezterm")
 
--- Add vendored session modules to the search path
-local _sep = package.config:sub(1, 1)
-for _, plugin in ipairs(wezterm.plugin.list()) do
-  if plugin.url:find("workspace%-manager") then
-    package.path = plugin.plugin_dir
-      .. _sep
-      .. "plugin"
-      .. _sep
-      .. "?.lua;"
-      .. package.path
-    break
+-- A direct development load can specify its module directory so an installed
+-- clone cannot take precedence over the checkout being edited.
+local load_options = ...
+local plugin_dir = type(load_options) == "table" and load_options.plugin_dir
+if not plugin_dir then
+  for _, plugin in ipairs(wezterm.plugin.list()) do
+    if plugin.url:find("workspace%-manager") then
+      plugin_dir = plugin.plugin_dir .. "/plugin"
+      break
+    end
   end
 end
+if plugin_dir then package.path = plugin_dir .. "/?.lua;" .. package.path end
 
 local M = {}
 
