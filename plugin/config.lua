@@ -30,20 +30,17 @@ function mod.get_switcher_legend()
 end
 
 function mod.apply_to_config(config)
-  -- Track previous workspace on focus change
-  wezterm.on("window-focus-changed", function(window, pane)
-    if window and window.active_workspace then
-      local current = window:active_workspace()
-      if
-        wezterm.GLOBAL.last_focused_workspace
-        and wezterm.GLOBAL.last_focused_workspace ~= current
-      then
-        wezterm.GLOBAL.previous_workspace =
-          wezterm.GLOBAL.last_focused_workspace
-      end
-      wezterm.GLOBAL.last_focused_workspace = current
-    end
-  end)
+  -- Plugin actions track switches directly. Observe external switches too:
+  -- WezTerm can reuse a focused GUI window without a focus-change event.
+  local function track_workspace(window)
+    if not window or not window:is_focused() then return end
+    history.record_workspace_switch(
+      wezterm.GLOBAL.last_focused_workspace,
+      mux.get_active_workspace()
+    )
+  end
+  wezterm.on("window-focus-changed", track_workspace)
+  wezterm.on("update-status", track_workspace)
 
   -- Session persistence setup
   if M_ref.session_enabled then
@@ -94,6 +91,7 @@ function mod.apply_to_config(config)
           spawn_args.height = ws.size.rows
         end
         local _, _, window = mux.spawn_window(spawn_args)
+        history.record_workspace_switch(nil, workspace_name)
 
         local function do_restore()
           state.restore_workspace_state(workspace_name, window, {
@@ -103,7 +101,6 @@ function mod.apply_to_config(config)
             defer_pane_restore = true,
           })
           history.update_access_time(workspace_name)
-          wezterm.GLOBAL.last_focused_workspace = workspace_name
         end
 
         state.wait_for_stable_window(window, 0.10, 2, 15, function()

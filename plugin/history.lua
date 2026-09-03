@@ -38,6 +38,15 @@ function mod.save(history)
   end
 end
 
+-- Track raw workspace ids; display normalization can change their identity.
+function mod.record_workspace_switch(old_workspace, new_workspace)
+  if not new_workspace then return end
+  if old_workspace and old_workspace ~= new_workspace then
+    wezterm.GLOBAL.previous_workspace = old_workspace
+  end
+  wezterm.GLOBAL.last_focused_workspace = new_workspace
+end
+
 function mod.update_access_time(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
   wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times

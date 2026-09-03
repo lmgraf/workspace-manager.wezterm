@@ -147,6 +147,12 @@ end
 -- Action Handlers
 -- ============================================================================
 
+local function switch_workspace(window, pane, opts)
+  local old_workspace = window:active_workspace()
+  window:perform_action(act.SwitchToWorkspace(opts), pane)
+  history.record_workspace_switch(old_workspace, opts.name)
+end
+
 local function do_close_workspace(workspace_name, window, pane)
   wezterm.log_info(
     "workspace_manager: do_close_workspace called for: "
@@ -640,13 +646,10 @@ function mod.workspace_switcher()
                           line
                         )
                       end
-                      inner_win:perform_action(
-                        act.SwitchToWorkspace({
-                          name = line,
-                          spawn = { cwd = wezterm.home_dir },
-                        }),
-                        inner_p
-                      )
+                      switch_workspace(inner_win, inner_p, {
+                        name = line,
+                        spawn = { cwd = wezterm.home_dir },
+                      })
                       history.update_access_time(line)
                       local new_mux_window = data.get_current_mux_window(line)
                       if M_ref.session_enabled then
@@ -706,13 +709,10 @@ function mod.workspace_switcher()
                             workspace_name
                           )
                         end
-                        inner_win:perform_action(
-                          act.SwitchToWorkspace({
-                            name = workspace_name,
-                            spawn = { cwd = expanded_path },
-                          }),
-                          inner_p
-                        )
+                        switch_workspace(inner_win, inner_p, {
+                          name = workspace_name,
+                          spawn = { cwd = expanded_path },
+                        })
                         history.update_access_time(workspace_name)
                         if is_zoxide then
                           wezterm.run_child_process({
@@ -832,7 +832,7 @@ function mod.workspace_switcher()
                   id
                 )
               end
-              win:perform_action(act.SwitchToWorkspace({ name = id }), p)
+              switch_workspace(win, p, { name = id })
               history.update_access_time(id)
               local new_mux_window = data.get_current_mux_window(id)
               -- Restore focused window order from saved state if available.
@@ -888,7 +888,7 @@ function mod.workspace_switcher()
                   id
                 )
               end
-              win:perform_action(act.SwitchToWorkspace({ name = id }), p)
+              switch_workspace(win, p, { name = id })
               history.update_access_time(id)
               local new_mux_window = data.get_current_mux_window(id)
               state.restore_workspace_state(id, new_mux_window)
@@ -933,13 +933,10 @@ function mod.workspace_switcher()
                   workspace_name
                 )
               end
-              win:perform_action(
-                act.SwitchToWorkspace({
-                  name = workspace_name,
-                  spawn = { cwd = expanded_path or wezterm.home_dir },
-                }),
-                p
-              )
+              switch_workspace(win, p, {
+                name = workspace_name,
+                spawn = { cwd = expanded_path or wezterm.home_dir },
+              })
               history.update_access_time(workspace_name)
               if is_zoxide then
                 wezterm.run_child_process({ M_ref.zoxide_path, "add", "--", id })
@@ -981,8 +978,6 @@ function mod.switch_to_previous_workspace()
       state.save_workspace_state(current_workspace, window)
     end
 
-    wezterm.GLOBAL.previous_workspace = current_workspace
-
     -- Emit pre-switch event with old workspace's MuxWindow
     local old_mux_window = data.get_current_mux_window(current_workspace)
     wezterm.emit(
@@ -993,10 +988,7 @@ function mod.switch_to_previous_workspace()
       previous_workspace
     )
 
-    window:perform_action(
-      act.SwitchToWorkspace({ name = previous_workspace }),
-      pane
-    )
+    switch_workspace(window, pane, { name = previous_workspace })
 
     -- Emit post-switch event with new workspace's MuxWindow
     local new_mux_window = data.get_current_mux_window(previous_workspace)
@@ -1054,10 +1046,7 @@ function mod.next_workspace()
       next_workspace
     )
 
-    window:perform_action(
-      act.SwitchToWorkspace({ name = next_workspace }),
-      pane
-    )
+    switch_workspace(window, pane, { name = next_workspace })
     history.update_access_time(next_workspace)
 
     -- Emit post-switch event with new workspace's MuxWindow
@@ -1117,10 +1106,7 @@ function mod.previous_workspace()
       prev_workspace
     )
 
-    window:perform_action(
-      act.SwitchToWorkspace({ name = prev_workspace }),
-      pane
-    )
+    switch_workspace(window, pane, { name = prev_workspace })
     history.update_access_time(prev_workspace)
 
     -- Emit post-switch event with new workspace's MuxWindow
