@@ -19,12 +19,19 @@ local mod = {}
 -- description hints, and legend are all generated from this.
 local DEFAULT_SWITCHER_KEYS = {
   delete = { key = "d", mods = "CTRL", hint = "del" },
+  unload = { key = "u", mods = "CTRL", hint = "unload" },
   new = { key = "n", mods = "CTRL", hint = "new" },
   new_at_path = { key = "p", mods = "CTRL", hint = "path" },
   rename = { key = "r", mods = "CTRL", hint = "rename" },
 }
 -- Explicit order for deterministic hint text (pairs() order is undefined in Lua)
-local SWITCHER_KEY_ORDER = { "delete", "new", "new_at_path", "rename" }
+local SWITCHER_KEY_ORDER = {
+  "delete",
+  "unload",
+  "new",
+  "new_at_path",
+  "rename",
+}
 
 -- Returns the resolved key config as an ordered list, merging M_ref.switcher_keys overrides
 -- with defaults. Each entry: { key, mods, hint, action_name }. Disabled actions (false) omitted.
@@ -103,7 +110,7 @@ end
 -- Tracks which action the key table intercepted so the InputSelector callback
 -- can dispatch to kill/rename/new instead of the default switch.
 local switcher_state = {
-  pending_action = nil, -- "delete" | "rename" | "new" | nil (nil = default switch)
+  pending_action = nil, -- configured action name, or nil for default switch
 }
 
 -- Creates a key table entry that sets pending_action, pops the key table, and
@@ -153,9 +160,9 @@ local function switch_workspace(window, pane, opts)
   history.record_workspace_switch(old_workspace, opts.name)
 end
 
-local function do_close_workspace(workspace_name, window, pane)
+local function close_workspace_panes(workspace_name, window)
   wezterm.log_info(
-    "workspace_manager: do_close_workspace called for: "
+    "workspace_manager: close_workspace_panes called for: "
       .. tostring(workspace_name)
   )
 
@@ -168,7 +175,7 @@ local function do_close_workspace(workspace_name, window, pane)
       "Failed to detect wezterm path. Please set wezterm_path manually.",
       4000
     )
-    return
+    return false
   end
 
   local current_workspace = window:active_workspace()
@@ -184,7 +191,7 @@ local function do_close_workspace(workspace_name, window, pane)
       "workspace_manager: blocked — cannot close active workspace"
     )
     helpers.notify(window, "Workspace", "Cannot close active workspace")
-    return
+    return false
   end
 
   -- Get all panes via CLI (most reliable method)
@@ -203,10 +210,17 @@ local function do_close_workspace(workspace_name, window, pane)
       "Failed to list panes: " .. tostring(stderr),
       4000
     )
-    return
+    return false
   end
 
-  local panes = wezterm.json_parse(stdout)
+  local parse_ok, panes = pcall(function() return wezterm.json_parse(stdout) end)
+  if not parse_ok or type(panes) ~= "table" then
+    wezterm.log_warn(
+      "workspace_manager: failed to parse pane list: " .. tostring(panes)
+    )
+    helpers.notify(window, "Workspace", "Failed to parse pane list", 4000)
+    return false
+  end
   local panes_to_kill = {}
 
   -- Diagnostic: dump all workspace names seen in cli list output
@@ -243,7 +257,7 @@ local function do_close_workspace(workspace_name, window, pane)
       "workspace_manager: no panes found for workspace: " .. workspace_name
     )
     helpers.notify(window, "Workspace", "No panes found in workspace")
-    return
+    return false
   end
 
   if #panes_to_kill > 1 then
@@ -254,7 +268,8 @@ local function do_close_workspace(workspace_name, window, pane)
     )
   end
 
-  -- Kill each pane
+  -- Kill each pane, but continue after failures so every pane gets an attempt.
+  local failed = 0
   for _, pane_id in ipairs(panes_to_kill) do
     local kill_ok, _, kill_err = wezterm.run_child_process({
       wezterm_path,
@@ -265,6 +280,7 @@ local function do_close_workspace(workspace_name, window, pane)
     if kill_ok then
       wezterm.log_info("workspace_manager: killed pane " .. tostring(pane_id))
     else
+      failed = failed + 1
       wezterm.log_warn(
         "workspace_manager: failed to kill pane "
           .. tostring(pane_id)
@@ -274,19 +290,28 @@ local function do_close_workspace(workspace_name, window, pane)
     end
   end
 
-  -- Remove from history
+  if failed > 0 then
+    helpers.notify(
+      window,
+      "Workspace",
+      "Failed to close "
+        .. failed
+        .. " of "
+        .. #panes_to_kill
+        .. " panes in: "
+        .. workspace_name,
+      4000
+    )
+    return false
+  end
+  return true
+end
+
+local function remove_workspace_history(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
   if wezterm.GLOBAL.workspace_access_times then
     wezterm.GLOBAL.workspace_access_times[normalized] = nil
     history.save(wezterm.GLOBAL.workspace_access_times)
-  end
-
-  -- Delete saved state so it doesn't reappear after restart
-  if M_ref.session_enabled then
-    state.delete_workspace_state(workspace_name)
-    wezterm.log_info(
-      "workspace_manager: deleted saved state for: " .. workspace_name
-    )
   end
 end
 
@@ -662,11 +687,7 @@ local function delete_selected_workspace(context, window, pane, id)
     wezterm.log_info(
       "workspace_manager: deleting saved-only workspace: " .. id
     )
-    local normalized = helpers.normalize_workspace_name(id)
-    if wezterm.GLOBAL.workspace_access_times then
-      wezterm.GLOBAL.workspace_access_times[normalized] = nil
-      history.save(wezterm.GLOBAL.workspace_access_times)
-    end
+    remove_workspace_history(id)
     if M_ref.session_enabled then state.delete_workspace_state(id) end
     wezterm.emit(
       "workspace_manager.workspace_switcher.deleted",
@@ -675,15 +696,69 @@ local function delete_selected_workspace(context, window, pane, id)
       id
     )
   elseif context.existing_workspace_ids[id] then
-    do_close_workspace(id, window, pane)
-    wezterm.emit(
-      "workspace_manager.workspace_switcher.deleted",
-      window,
-      pane,
-      id
-    )
+    if close_workspace_panes(id, window) then
+      remove_workspace_history(id)
+      if M_ref.session_enabled then
+        state.delete_workspace_state(id)
+        wezterm.log_info(
+          "workspace_manager: deleted saved state for: " .. id
+        )
+      end
+      wezterm.emit(
+        "workspace_manager.workspace_switcher.deleted",
+        window,
+        pane,
+        id
+      )
+    end
   else
     helpers.notify(window, "Workspace", "Cannot delete: not a workspace")
+  end
+  reopen_switcher(window, pane)
+end
+
+local function unload_selected_workspace(context, window, pane, id)
+  wezterm.log_info(
+    "workspace_manager: switcher unload action, id=" .. tostring(id)
+  )
+  if id == window:active_workspace() then
+    wezterm.log_warn(
+      "workspace_manager: switcher blocked unload of active workspace"
+    )
+    helpers.notify(window, "Workspace", "Cannot unload active workspace")
+  elseif not context.existing_workspace_ids[id] then
+    helpers.notify(window, "Workspace", "Cannot unload: not a live workspace")
+  else
+    local should_save = M_ref.session_enabled
+      and not state.is_excluded_workspace(id)
+    if should_save then
+      local save_ok, save_err = state.save_workspace_state(id)
+      if not save_ok then
+        wezterm.log_warn(
+          "workspace_manager: refusing to unload '"
+            .. id
+            .. "' because save failed: "
+            .. tostring(save_err)
+        )
+        helpers.notify(
+          window,
+          "Workspace",
+          "Failed to save; workspace was not unloaded",
+          4000
+        )
+        reopen_switcher(window, pane)
+        return
+      end
+    end
+
+    if close_workspace_panes(id, window) then
+      wezterm.emit(
+        "workspace_manager.workspace_switcher.unloaded",
+        window,
+        pane,
+        id
+      )
+    end
   end
   reopen_switcher(window, pane)
 end
@@ -842,6 +917,8 @@ local function handle_switcher_selection(context, window, pane, id, label)
 
   if pending == "delete" then
     delete_selected_workspace(context, window, pane, id)
+  elseif pending == "unload" then
+    unload_selected_workspace(context, window, pane, id)
   elseif pending == "rename" then
     prompt_workspace_rename(context, window, pane, id)
   elseif pending == "new" then
@@ -1072,12 +1149,16 @@ function mod.save_workspace()
       )
       return
     end
-    state.save_workspace_state(workspace, window)
-    helpers.notify(
-      window,
-      "Workspace",
-      "Saved: " .. helpers.normalize_workspace_name(workspace)
-    )
+    local save_ok = state.save_workspace_state(workspace, window)
+    if save_ok then
+      helpers.notify(
+        window,
+        "Workspace",
+        "Saved: " .. helpers.normalize_workspace_name(workspace)
+      )
+    else
+      helpers.notify(window, "Workspace", "Failed to save workspace", 4000)
+    end
   end)
 end
 

@@ -21,7 +21,7 @@ WezTerm workspaces are powerful but require manual setup. There's no built-in sw
 The switcher presents three categories of entries:
 
 - **Live workspaces**: currently running in memory. Switching is instant; no restore needed.
-- **Saved workspaces**: a workspace that has state on disk but isn't currently running. This happens when WezTerm exits (or crashes) before you explicitly deleted the workspace. State is written to disk when you switch away, on a periodic timer, or via a manual save. These appear in the switcher when `session_enabled = true` so you can pick up where you left off. Selecting one spawns a new workspace and restores its full layout. Deleting a workspace via `Ctrl+D` removes both the live workspace and its state file, so it won't reappear.
+- **Saved workspaces**: a workspace that has state on disk but isn't currently running. This happens when WezTerm exits, crashes, or you unload a live workspace with `Ctrl+U`. State is written to disk when you switch away, on a periodic timer, through a manual save, or immediately before unloading. These appear in the switcher when `session_enabled = true` so you can pick up where you left off. Selecting one spawns a new workspace and restores its full layout. Deleting a workspace via `Ctrl+D` removes both the live workspace and its state file, so it won't reappear.
 - **Suggestions**: directories from zoxide history by default, or a custom `get_choices` provider. Not workspaces yet. Selecting one creates a new workspace at that path. Set `get_choices = false` to disable suggestions entirely.
 
 Each row starts with a status prefix. Choose circles with `workspace_status_format = "icons"` (the default), or equal-width tags with `"words"`:
@@ -63,7 +63,7 @@ These are the defaults; no color configuration is required to follow your scheme
 
 ### Session lifecycle
 
-State is saved to disk automatically when you switch away from a workspace, on a periodic timer (every 10 minutes by default), and manually by binding `save_workspace()` to a key. A "saved" workspace is just a JSON state file on disk with no process running. State files can accumulate over time: quitting WezTerm, a crash, or a periodic save all write state that persists until you explicitly delete the workspace via `Ctrl+D` in the switcher (which removes both the running workspace and its state file) or until `session_exclude_workspaces` is set to prevent saves.
+State is saved to disk automatically when you switch away from a workspace, on a periodic timer (every 10 minutes by default), before unloading when persistence applies, and manually by binding `save_workspace()` to a key. A "saved" workspace is just a JSON state file on disk with no process running. State files can accumulate over time: quitting WezTerm, a crash, an unload, or a periodic save all write state that persists until you explicitly delete the workspace via `Ctrl+D` in the switcher (which removes both the running workspace and its state file) or until `session_exclude_workspaces` is set to prevent saves.
 
 ### Path normalization
 
@@ -107,6 +107,7 @@ When using `apply_to_config()`, the following default keybindings are added:
 |-----|--------|
 | `Enter` | Switch to the selected workspace |
 | `Ctrl + D` | Delete the selected workspace (re-opens switcher) |
+| `Ctrl + U` | Unload the selected live workspace (save, close, and re-open switcher) |
 | `Ctrl + N` | Create a new workspace by name |
 | `Ctrl + P` | Create a new workspace at a path |
 | `Ctrl + R` | Rename the selected workspace |
@@ -147,7 +148,7 @@ config.keys = {
 }
 ```
 
-**Note:** Even with custom keybindings, you still need to call `apply_to_config(config)` to register the `workspace_switcher_actions` key table (which powers the in-switcher Ctrl+D/N/P/R bindings) and the event handlers for session persistence and status bar updates.
+**Note:** Even with custom keybindings, you still need to call `apply_to_config(config)` to register the `workspace_switcher_actions` key table (which powers the in-switcher Ctrl+D/U/N/P/R bindings) and the event handlers for session persistence and status bar updates.
 
 ## API
 
@@ -192,7 +193,7 @@ config.keys = {
 
 All actions return a WezTerm action that can be used in keybindings:
 
-- `workspace_manager.workspace_switcher()`: opens the unified switcher (switch, delete, new, rename all from within)
+- `workspace_manager.workspace_switcher()`: opens the unified switcher (switch, delete, unload, new, and rename all from within)
 - `workspace_manager.switch_to_previous_workspace()`: switches to the previously active workspace (Alt-Tab toggle behavior)
 - `workspace_manager.next_workspace()`: cycles to the next workspace in alphabetical order (with wrapping)
 - `workspace_manager.previous_workspace()`: cycles to the previous workspace in alphabetical order (with wrapping)
@@ -220,23 +221,25 @@ The unified switcher (`LEADER + s`) shows:
 While the switcher is open, additional actions are available via key bindings:
 
 - **`Ctrl+D`**: delete the highlighted workspace. Blocked if you highlight the current workspace. Re-opens the switcher automatically after deleting.
+- **`Ctrl+U`**: unload the highlighted live workspace. When session persistence applies, the workspace must save successfully before its panes are closed; its snapshot and history remain available for restoration. Persistence-disabled and excluded workspaces close without saving. The current workspace cannot be unloaded.
 - **`Ctrl+N`**: create a new named workspace. Input is a name; the new workspace opens at the default cwd.
 - **`Ctrl+P`**: create a new workspace rooted at a path. Input is a filesystem path; the workspace name is derived from the directory basename.
 - **`Ctrl+R`**: rename the highlighted workspace. If the new name matches an existing workspace, windows are merged into it.
 
 ### Switcher Keys
 
-By default the in-switcher action keys are `Ctrl+D` (delete), `Ctrl+N` (new), `Ctrl+P` (new at path), and `Ctrl+R` (rename). Override them via `switcher_keys`:
+By default the in-switcher action keys are `Ctrl+D` (delete), `Ctrl+U` (unload), `Ctrl+N` (new), `Ctrl+P` (new at path), and `Ctrl+R` (rename). Override them via `switcher_keys`:
 
 ```lua
 workspace_manager.switcher_keys = {
   delete      = { key = "x", mods = "CTRL" },  -- remap delete to Ctrl+X
+  unload      = { key = "u", mods = "ALT" },   -- remap unload to Alt+U
   rename      = false,                           -- disable rename entirely
   -- unspecified actions keep their defaults
 }
 ```
 
-Actions: `"delete"`, `"new"`, `"new_at_path"`, `"rename"`. Enter (select) and Escape (cancel) are not configurable.
+Actions: `"delete"`, `"unload"`, `"new"`, `"new_at_path"`, `"rename"`. Enter (select) and Escape (cancel) are not configurable.
 
 The description bar and `get_switcher_legend()` both auto-reflect whatever keys are configured. To hide hints from the description bar and show them only in the right-status legend instead:
 
@@ -265,7 +268,7 @@ wezterm.on("update-right-status", function(window, pane)
   if window:active_key_table() == "workspace_switcher_actions" then
     window:set_right_status(wezterm.format({
       { Foreground = { Color = "#585b70" } },
-      { Text = "  ^D=del  ^N=new  ^P=path  ^R=rename  Esc=cancel " },
+      { Text = "  ^D=del  ^U=unload  ^N=new  ^P=path  ^R=rename  Esc=cancel " },
     }))
     return
   end
@@ -496,6 +499,7 @@ The plugin emits events you can hook into for custom behavior:
 | Event | When | Parameters |
 |-------|------|-----------|
 | `workspace_manager.workspace_switcher.deleted` | After a workspace is deleted | `window, pane, workspace_name` |
+| `workspace_manager.workspace_switcher.unloaded` | After every pane in a live workspace is closed | `window, pane, workspace_name` |
 | `workspace_manager.workspace_switcher.renamed` | After a workspace is renamed or merged | `window, pane, old_name, new_name` |
 
 ### Using resurrect.wezterm instead

@@ -37,9 +37,9 @@ M.workspace_count_format = "compact" -- nil (disabled), "compact" (2w 3t 5p), or
 M.use_basename_for_workspace_names = false -- Use basename only (default: false for backward compatibility)
 M.workspace_switcher_sort = "recency" -- "recency" (most recently used first, default) or "alphabetical" (sorted alphabetically)
 M.switcher_keys = nil -- Override in-switcher action key bindings. Table mapping action name to { key, mods }.
--- Actions: "delete", "new", "new_at_path", "rename"
+-- Actions: "delete", "unload", "new", "new_at_path", "rename"
 -- Set an action to false to disable it. Unspecified actions use defaults.
--- e.g. { delete = { key = "x", mods = "CTRL" }, rename = false }
+-- e.g. { unload = { key = "x", mods = "CTRL" }, rename = false }
 M.show_switcher_hints = true -- Show action key hints in the switcher description bar (both fuzzy and non-fuzzy modes).
 -- Set to false to hide hints from the description (use get_switcher_legend() instead).
 M.workspace_status_format = "icons" -- "icons" (● / ○ / ·) or "words" ([live] / [disk] / [path])

@@ -7,13 +7,21 @@ local pub = {}
 ---@return boolean success result
 ---@return string|nil error
 function pub.write_file(file_path, str)
+  local handle
   local suc, err = pcall(function()
-    local handle = io.open(file_path, "w+")
+    handle = io.open(file_path, "w+")
     if not handle then error("Could not open file: " .. file_path) end
-    handle:write(str)
-    handle:flush()
-    handle:close()
+    local wrote, write_err = handle:write(str)
+    if not wrote then error("Could not write file: " .. tostring(write_err)) end
+    local flushed, flush_err = handle:flush()
+    if not flushed then
+      error("Could not flush file: " .. tostring(flush_err))
+    end
+    local closed, close_err = handle:close()
+    handle = nil
+    if not closed then error("Could not close file: " .. tostring(close_err)) end
   end)
+  if handle then pcall(function() handle:close() end) end
   return suc, err
 end
 
@@ -51,6 +59,8 @@ end
 ---@param file_path string
 ---@param state table
 ---@param event_type "workspace" | "window" | "tab"
+---@return boolean success result
+---@return string|nil error
 function pub.write_state(file_path, state, event_type)
   local json_state = wezterm.json_encode(state)
   json_state = sanitize_json(json_state)
@@ -58,6 +68,7 @@ function pub.write_state(file_path, state, event_type)
   if not ok then
     wezterm.log_error("Failed to write state: " .. tostring(err))
   end
+  return ok, err
 end
 
 ---@param file_path string

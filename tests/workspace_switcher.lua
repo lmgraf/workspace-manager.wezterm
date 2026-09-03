@@ -5,6 +5,7 @@ local root = runtime.config_dir .. "/../plugin/"
 local current, selector, prompt, timers, calls, settings, actions
 local formatted
 local directory_exists, mkdir_ok, zoxide, excluded, saved_focus
+local save_ok, list_ok, kill_fail_id
 local window, pane = {}, {}
 local function record(kind, ...)
   table.insert(calls, { kind = kind, args = table.pack(...) })
@@ -39,9 +40,22 @@ local fake = {
   column_width = runtime.column_width,
   log_info = function() end,
   log_warn = function() end,
-  json_parse = function() return { { workspace = "B", pane_id = 20 } } end,
+  json_parse = function()
+    return {
+      { workspace = "B", pane_id = 20 },
+      { workspace = "B", pane_id = 21 },
+      { workspace = "C", pane_id = 30 },
+    }
+  end,
   run_child_process = function(args)
     record("command", args)
+    if args[3] == "list" and not list_ok then return false, "", "list failed" end
+    if
+      args[3] == "kill-pane"
+      and args[4] == "--pane-id=" .. tostring(kill_fail_id)
+    then
+      return false, "", "kill failed"
+    end
     return true, "[]", ""
   end,
   time = {
@@ -112,7 +126,10 @@ local deps = {
   },
   state = {
     is_excluded_workspace = function(name) return excluded == name end,
-    save_workspace_state = function(name) record("save", name) end,
+    save_workspace_state = function(name)
+      record("save", name)
+      return save_ok, save_ok and nil or "disk full"
+    end,
     restore_workspace_state = function(...) record("restore", ...) end,
     delete_workspace_state = function(...) record("delete", ...) end,
     rename_workspace_state = function(...) record("rename_state", ...) end,
@@ -161,6 +178,7 @@ local function reset()
   timers, calls, formatted = {}, {}, {}
   directory_exists, mkdir_ok, zoxide = true, true, false
   excluded, saved_focus = nil, false
+  save_ok, list_ok, kill_fail_id = true, true, nil
   fake.GLOBAL = { workspace_access_times = { A = 1, B = 2, Saved = 3 } }
   settings = { session_enabled = true, zoxide_path = "zoxide" }
   package.loaded.wezterm = fake
@@ -248,12 +266,19 @@ assert(selector.choices[4].label == "E Named")
 assert(selector.choices[1].id == "A" and selector.choices[3].id == "Saved")
 assert(
   selector.description
-    == "Current label | M-a=new ^P=path ^R=rename | Esc=cancel"
+    == "Current label | ^U=unload M-a=new ^P=path ^R=rename | Esc=cancel"
 )
 assert(
   selector.fuzzy_description
-    == "Current label | M-a=new ^P=path ^R=rename | Switch to: "
+    == "Current label | ^U=unload M-a=new ^P=path ^R=rename | Switch to: "
 )
+settings.switcher_keys.unload = false
+open()
+assert(not selector.description:find("unload", 1, true))
+settings.switcher_keys.unload = { key = "x", mods = "ALT", hint = "drop" }
+open()
+assert(selector.description:find("M%-x=drop"))
+settings.switcher_keys.unload = nil
 settings.workspace_count_format = "compact"
 open()
 assert(selector.choices[2].label == "W Other label (2t 3p)")
@@ -435,10 +460,80 @@ for _, id in ipairs({ "A", "Custom", "Saved", "B" }) do
     assert(recorded("delete")[1][1] == id)
     assert(fake.GLOBAL.workspace_access_times[id] == nil)
     assert(#recorded(event_prefix .. "deleted") == 1)
-    if id == "B" then assert(#recorded("command") == 2) end
+    if id == "B" then assert(#recorded("command") == 3) end
   end
   flush_reopen()
 end
+
+-- Unload saves before closing, preserves state/history, and only accepts live targets.
+reset()
+choose("B", "unload")
+assert(recorded("save")[1][1] == "B")
+assert(#recorded("command") == 3)
+assert(#recorded("delete") == 0 and fake.GLOBAL.workspace_access_times.B == 2)
+assert(#recorded(event_prefix .. "unloaded") == 1)
+local unload_order = {}
+for _, call in ipairs(calls) do
+  if
+    call.kind == "save"
+    or call.kind == "command"
+    or call.kind == event_prefix .. "unloaded"
+  then
+    table.insert(unload_order, call.kind)
+  end
+end
+assert(
+  table.concat(unload_order, ",")
+    == "save,command,command,command," .. event_prefix .. "unloaded"
+)
+flush_reopen()
+
+for _, without_save in ipairs({ "disabled", "excluded" }) do
+  reset()
+  if without_save == "disabled" then
+    settings.session_enabled = false
+  else
+    excluded = "B"
+  end
+  choose("B", "unload")
+  assert(#recorded("save") == 0 and #recorded("command") == 3)
+  assert(#recorded(event_prefix .. "unloaded") == 1)
+  assert(fake.GLOBAL.workspace_access_times.B == 2)
+  flush_reopen()
+end
+
+for _, failure in ipairs({ "save", "list", "kill" }) do
+  reset()
+  if failure == "save" then
+    save_ok = false
+  elseif failure == "list" then
+    list_ok = false
+  else
+    kill_fail_id = 21
+  end
+  choose("B", "unload")
+  assert(#recorded(event_prefix .. "unloaded") == 0)
+  assert(#recorded("delete") == 0 and fake.GLOBAL.workspace_access_times.B == 2)
+  if failure == "save" then
+    assert(#recorded("command") == 0)
+  elseif failure == "list" then
+    assert(#recorded("command") == 1)
+  else
+    assert(#recorded("command") == 3)
+  end
+  assert(#recorded("notify") >= 1)
+  flush_reopen()
+end
+
+for _, id in ipairs({ "A", "Saved", "Custom" }) do
+  reset()
+  choose(id, "unload")
+  assert(#recorded("save") == 0 and #recorded("command") == 0)
+  assert(#recorded(event_prefix .. "unloaded") == 0)
+  assert(#recorded("notify") == 1)
+  flush_reopen()
+end
+
 for _, id in ipairs({ "B", "Saved" }) do
   reset()
   choose(id, "rename")

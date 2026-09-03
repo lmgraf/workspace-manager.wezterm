@@ -85,44 +85,50 @@ function mod.get_most_recent_saved_workspace()
   return nil
 end
 
+---@return boolean success
+---@return string|nil error
 function mod.save_workspace_state(workspace_name, gui_win)
-  if mod.is_excluded_workspace(workspace_name) then return end
-
-  local workspace_state_mod, _, file_io = get_session_modules()
-  ensure_state_dir()
+  if mod.is_excluded_workspace(workspace_name) then
+    return false, "workspace is excluded from session saves"
+  end
 
   local ok, err = pcall(function()
+    local workspace_state_mod, _, file_io = get_session_modules()
+    ensure_state_dir()
     local state = workspace_state_mod.get_workspace_state_for(workspace_name)
-    if state and state.window_states and #state.window_states > 0 then
-      -- Inject full window pixel dimensions when called from a GUI event context.
-      -- mux_window:gui_window() only works for the *active* workspace, so we accept the
-      -- GuiWindow directly from callers that already have it.
-      if gui_win then
-        local dims = gui_win:get_dimensions()
-        local target_id = gui_win:mux_window():window_id()
-        local matched = false
-        for _, ws in ipairs(state.window_states) do
-          if ws.window_id == target_id then
-            ws.window_pixel_width = dims.pixel_width
-            ws.window_pixel_height = dims.pixel_height
-            matched = true
-            break
-          end
-        end
-        -- Fallback: inject into first window if no id match (shouldn't happen).
-        if not matched and state.window_states[1] then
-          state.window_states[1].window_pixel_width = dims.pixel_width
-          state.window_states[1].window_pixel_height = dims.pixel_height
+    if not state or not state.window_states or #state.window_states == 0 then
+      error("workspace has no windows to save")
+    end
+
+    -- Inject full window pixel dimensions when called from a GUI event context.
+    -- mux_window:gui_window() only works for the *active* workspace, so we accept the
+    -- GuiWindow directly from callers that already have it.
+    if gui_win then
+      local dims = gui_win:get_dimensions()
+      local target_id = gui_win:mux_window():window_id()
+      local matched = false
+      for _, ws in ipairs(state.window_states) do
+        if ws.window_id == target_id then
+          ws.window_pixel_width = dims.pixel_width
+          ws.window_pixel_height = dims.pixel_height
+          matched = true
+          break
         end
       end
-      local path = get_state_file_path(workspace_name)
-      file_io.write_state(path, state, "workspace")
-      wezterm.log_info(
-        "workspace_manager: saved state for workspace '"
-          .. workspace_name
-          .. "'"
-      )
+      -- Fallback: inject into first window if no id match (shouldn't happen).
+      if not matched and state.window_states[1] then
+        state.window_states[1].window_pixel_width = dims.pixel_width
+        state.window_states[1].window_pixel_height = dims.pixel_height
+      end
     end
+    local path = get_state_file_path(workspace_name)
+    local write_ok, write_err = file_io.write_state(path, state, "workspace")
+    if not write_ok then error(write_err or "failed to write workspace state") end
+    wezterm.log_info(
+      "workspace_manager: saved state for workspace '"
+        .. workspace_name
+        .. "'"
+    )
   end)
   if not ok then
     wezterm.log_error(
@@ -131,7 +137,9 @@ function mod.save_workspace_state(workspace_name, gui_win)
         .. "': "
         .. tostring(err)
     )
+    return false, tostring(err)
   end
+  return true
 end
 
 function mod.load_workspace_state(workspace_name)
