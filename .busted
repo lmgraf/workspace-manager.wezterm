@@ -1,0 +1,10 @@
+return {
+  _all = {
+    ROOT = { "tests/unit" },
+    pattern = "_spec%.lua$",
+    lpath = "./plugin/?.lua;./plugin/?/init.lua;./tests/?.lua;./tests/?/init.lua",
+    output = "gtest",
+    verbose = false,
+    ["auto-insulate"] = true,
+  },
+}

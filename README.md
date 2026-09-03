@@ -90,6 +90,39 @@ return config
 - [zoxide](https://github.com/ajeetdsouza/zoxide) (optional, used by default for directory history; can be replaced with a custom provider via `get_choices`)
 - A `LEADER` key configured in your wezterm config
 
+## Testing
+
+The test suite has two deliberately separate layers. Unit tests use fake WezTerm
+modules, run quickly, and do not read user workspace history or session files.
+Integration tests exercise the real WezTerm mux, formatter, Unicode column
+widths, scrollback, and PowerShell/ConPTY behavior.
+
+For unit-test development, install Lua 5.4 and LuaRocks once, then install the
+same Busted release used in CI:
+
+```console
+luarocks --lua-version=5.4 install busted 2.3.0-1
+```
+
+Run the complete unit suite from the repository root. Busted identifies failures
+by their named case, prints an aggregate pass/fail summary, and returns a nonzero
+status on failure:
+
+```console
+busted
+```
+
+The Windows-only integration suite requires WezTerm and PowerShell 7. Run it
+explicitly from the repository root:
+
+```console
+wezterm-mux-server --config-file tests/integration/scrollback_restore.lua
+```
+
+Each integration run uses a socket named with its WezTerm process ID, so stale
+or concurrent test servers do not collide. The integration suite is intentionally
+local-only; GitHub Actions runs just the standalone Lua unit suite.
+
 ## Keybindings
 
 When using `apply_to_config()`, the following default keybindings are added:
