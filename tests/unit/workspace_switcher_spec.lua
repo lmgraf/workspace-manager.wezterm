@@ -67,6 +67,13 @@ describe("workspace switcher", function()
     error("prefix was not formatted: " .. prefix)
   end
 
+  local function assert_flat_format_items(parts)
+    assert.is_table(parts)
+    for _, part in ipairs(parts) do
+      assert.is_nil(part[1], "format list contained a nested item list")
+    end
+  end
+
   it("orders choices, formats counts, and builds configurable hints", function()
     local settings = ctx.settings
     settings.workspace_switcher_sort = "alphabetical"
@@ -191,6 +198,56 @@ describe("workspace switcher", function()
 
     settings.workspace_status_format = "invalid"
     assert.has_error(function() ctx:open() end)
+  end)
+
+  it("flattens structured switcher, legend, and prompt styles", function()
+    ctx.settings.show_current_workspace_hint = true
+    ctx.settings.show_switcher_hints = false
+    ctx.settings.colors = {
+      prompt_accent = {
+        { Foreground = { Color = "#50fa7b" } },
+        { Attribute = { Intensity = "Bold" } },
+      },
+      prompt_heading = {
+        { Attribute = { Intensity = "Bold" } },
+      },
+      muted = {
+        { Foreground = { Color = "#6272a4" } },
+        { Attribute = { Intensity = "Half" } },
+      },
+    }
+
+    ctx:open()
+    assert.are.equal(
+      "Current label | Esc=cancel",
+      ctx.selector.description
+    )
+    assert_flat_format_items(ctx.formatted[ctx.selector.description])
+    assert_flat_format_items(ctx.formatted[ctx.selector.fuzzy_description])
+
+    local config = require("workspace_manager.config")
+    local legend = config.get_switcher_legend()
+    assert.are.equal(
+      "  ^D=del  ^U=unload  ^N=new  ^P=path  ^R=rename  Esc=cancel",
+      legend
+    )
+    assert_flat_format_items(ctx.formatted[legend])
+
+    ctx:choose("B", "rename")
+    assert.are.equal(
+      "Renaming: B | Enter new name:",
+      ctx.prompt.description
+    )
+    assert_flat_format_items(ctx.formatted[ctx.prompt.description])
+
+    ctx.directory_exists = false
+    ctx:choose("B", "new_at_path")
+    ctx.prompt.action(ctx.window, ctx.pane, "~/new")
+    assert.are.equal(
+      "Directory does not exist: ~/new. Create it?",
+      ctx.selector.description
+    )
+    assert_flat_format_items(ctx.formatted[ctx.selector.description])
   end)
 
   it("filters by path or callback and reports an empty result", function()

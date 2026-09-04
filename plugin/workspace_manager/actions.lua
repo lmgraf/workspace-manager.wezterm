@@ -593,27 +593,30 @@ local function build_switcher_descriptions(current_display)
     if hints ~= "" then hints_infix = " " .. hints .. " |" end
   end
   if settings.show_current_workspace_hint then
-    return wezterm.format({
-      theme.fg(theme.get_color("prompt_accent")),
-      { Text = current_display },
-      theme.fg(theme.get_color("muted")),
-      { Text = " |" .. hints_infix .. " Esc=cancel" },
-    }),
-      wezterm.format({
-        theme.fg(theme.get_color("prompt_accent")),
-        { Text = current_display },
-        theme.fg(theme.get_color("muted")),
-        { Text = " |" .. hints_infix .. " Switch to: " },
-      })
+    return wezterm.format(theme.build_format_items({
+      { text = current_display, style = theme.get_color("prompt_accent") },
+      {
+        text = " |" .. hints_infix .. " Esc=cancel",
+        style = theme.get_color("muted"),
+      },
+    })),
+      wezterm.format(theme.build_format_items({
+        { text = current_display, style = theme.get_color("prompt_accent") },
+        {
+          text = " |" .. hints_infix .. " Switch to: ",
+          style = theme.get_color("muted"),
+        },
+      }))
   end
-  return wezterm.format({
-    theme.fg(theme.get_color("muted")),
-    { Text = "Enter=switch |" .. hints_infix .. " Esc=cancel" },
-  }),
-    wezterm.format({
-      theme.fg(theme.get_color("muted")),
-      { Text = "Switch to: " },
-    })
+  return wezterm.format(theme.build_format_items({
+    {
+      text = "Enter=switch |" .. hints_infix .. " Esc=cancel",
+      style = theme.get_color("muted"),
+    },
+  })),
+    wezterm.format(theme.build_format_items({
+      { text = "Switch to: ", style = theme.get_color("muted") },
+    }))
 end
 
 -- ============================================================================
@@ -875,12 +878,13 @@ local function prompt_workspace_rename(context, window, pane, id)
   end
   window:perform_action(
     act.PromptInputLine({
-      description = wezterm.format({
-        theme.fg(theme.get_color("prompt_accent")),
-        { Text = "Renaming: " .. helpers.normalize_workspace_name(id) },
-        theme.fg(theme.get_color("muted")),
-        { Text = " | Enter new name:" },
-      }),
+      description = wezterm.format(theme.build_format_items({
+        {
+          text = "Renaming: " .. helpers.normalize_workspace_name(id),
+          style = theme.get_color("prompt_accent"),
+        },
+        { text = " | Enter new name:", style = theme.get_color("muted") },
+      })),
       action = wezterm.action_callback(function(inner_win, inner_p, line)
         if line and line ~= "" then
           do_rename_workspace(id, line, inner_win, inner_p)
@@ -933,12 +937,20 @@ local function confirm_directory_creation(
   window:perform_action(
     act.InputSelector({
       title = "Create directory",
-      description = wezterm.format(
-        theme.build_heading("Directory does not exist: ")
-      ) .. wezterm.format({
-        theme.fg(theme.get_color("prompt_accent")),
-        { Text = helpers.normalize_workspace_name(display_path) },
-      }) .. wezterm.format(theme.build_heading(". Create it?")),
+      description = wezterm.format(theme.build_format_items({
+        {
+          text = "Directory does not exist: ",
+          style = theme.get_color("prompt_heading"),
+        },
+        {
+          text = helpers.normalize_workspace_name(display_path),
+          style = theme.get_color("prompt_accent"),
+        },
+        {
+          text = ". Create it?",
+          style = theme.get_color("prompt_heading"),
+        },
+      })),
       fuzzy = false,
       choices = {
         { id = "yes", label = "Yes" },

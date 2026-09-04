@@ -15,10 +15,9 @@ function mod.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
   local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel")
     or "  Esc=cancel"
-  return wezterm.format({
-    theme.fg(theme.get_color("muted")),
-    { Text = text },
-  })
+  return wezterm.format(theme.build_format_items({
+    { text = text, style = theme.get_color("muted") },
+  }))
 end
 
 ---Registers workspace tracking, session persistence, and switcher keys.

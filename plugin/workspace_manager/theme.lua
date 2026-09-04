@@ -3,6 +3,10 @@ local settings = require("workspace_manager.settings")
 
 local mod = {}
 
+---@class WorkspaceManagerStyledSegment
+---@field text string
+---@field style? WorkspaceManagerThemeStyle
+
 ---@type table<string, WorkspaceManagerThemeStyle>
 local DEFAULT_COLORS = {
   prompt_accent = "Lime",
@@ -86,6 +90,18 @@ function mod.append_segment(items, text, style)
     end
   end
   table.insert(items, { Text = text })
+end
+
+---Flattens ordered styled text segments into WezTerm format items.
+---@param segments WorkspaceManagerStyledSegment[]
+---@return FormatItem[]
+function mod.build_format_items(segments)
+  local items = {}
+  for _, segment in ipairs(segments) do
+    mod.append_segment(items, segment.text, segment.style)
+  end
+  table.insert(items, "ResetAttributes")
+  return items
 end
 
 ---@param icon string

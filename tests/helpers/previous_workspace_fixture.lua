@@ -26,6 +26,13 @@ function M.new()
       fg = function() return {} end,
       get_color = function() return "" end,
       build_heading = function() return {} end,
+      build_format_items = function(segments)
+        local items = {}
+        for _, segment in ipairs(segments) do
+          table.insert(items, { Text = segment.text })
+        end
+        return items
+      end,
       build_switcher_label = function(_, label) return label end,
     },
     helpers = {
