@@ -587,36 +587,37 @@ end
 ---@return string description
 ---@return string fuzzy_description
 local function build_switcher_descriptions(current_display)
-  local hints_infix = ""
+  local sep = " | "
+  local accent = theme.get_color("prompt_accent")
+  local muted = theme.get_color("muted")
+
+  local prefix = ""
   if settings.show_switcher_hints then
     local hints = mod.build_switcher_hints(" ")
-    if hints ~= "" then hints_infix = " " .. hints .. " |" end
+    if hints ~= "" then prefix = hints .. sep end
   end
+
+  local workspace_item = nil
+  local normal_prefix = "Enter=switch" .. sep
+  local fuzzy_prefix = ""
+
   if settings.show_current_workspace_hint then
-    return theme.format({
-      { text = current_display, style = theme.get_color("prompt_accent") },
-      {
-        text = " |" .. hints_infix .. " Esc=cancel",
-        style = theme.get_color("muted"),
-      },
-    }),
-      theme.format({
-        { text = current_display, style = theme.get_color("prompt_accent") },
-        {
-          text = " |" .. hints_infix .. " Switch to: ",
-          style = theme.get_color("muted"),
-        },
-      })
+    workspace_item = { text = current_display, style = accent }
+    normal_prefix = sep
+    fuzzy_prefix = sep
   end
-  return theme.format({
-    {
-      text = "Enter=switch |" .. hints_infix .. " Esc=cancel",
-      style = theme.get_color("muted"),
-    },
-  }),
-    theme.format({
-      { text = "Switch to: ", style = theme.get_color("muted") },
-    })
+
+  local normal = theme.format({
+    workspace_item,
+    { text = normal_prefix .. prefix .. "Esc=cancel", style = muted },
+  })
+
+  local fuzzy = theme.format({
+    workspace_item,
+    { text = fuzzy_prefix .. prefix .. "Switch to: ", style = muted },
+  })
+
+  return normal, fuzzy
 end
 
 -- ============================================================================
