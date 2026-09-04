@@ -593,30 +593,30 @@ local function build_switcher_descriptions(current_display)
     if hints ~= "" then hints_infix = " " .. hints .. " |" end
   end
   if settings.show_current_workspace_hint then
-    return wezterm.format(theme.build_format_items({
+    return theme.format({
       { text = current_display, style = theme.get_color("prompt_accent") },
       {
         text = " |" .. hints_infix .. " Esc=cancel",
         style = theme.get_color("muted"),
       },
-    })),
-      wezterm.format(theme.build_format_items({
+    }),
+      theme.format({
         { text = current_display, style = theme.get_color("prompt_accent") },
         {
           text = " |" .. hints_infix .. " Switch to: ",
           style = theme.get_color("muted"),
         },
-      }))
+      })
   end
-  return wezterm.format(theme.build_format_items({
+  return theme.format({
     {
       text = "Enter=switch |" .. hints_infix .. " Esc=cancel",
       style = theme.get_color("muted"),
     },
-  })),
-    wezterm.format(theme.build_format_items({
+  }),
+    theme.format({
       { text = "Switch to: ", style = theme.get_color("muted") },
-    }))
+    })
 end
 
 -- ============================================================================
@@ -878,13 +878,13 @@ local function prompt_workspace_rename(context, window, pane, id)
   end
   window:perform_action(
     act.PromptInputLine({
-      description = wezterm.format(theme.build_format_items({
+      description = theme.format({
         {
           text = "Renaming: " .. helpers.normalize_workspace_name(id),
           style = theme.get_color("prompt_accent"),
         },
         { text = " | Enter new name:", style = theme.get_color("muted") },
-      })),
+      }),
       action = wezterm.action_callback(function(inner_win, inner_p, line)
         if line and line ~= "" then
           do_rename_workspace(id, line, inner_win, inner_p)
@@ -937,7 +937,7 @@ local function confirm_directory_creation(
   window:perform_action(
     act.InputSelector({
       title = "Create directory",
-      description = wezterm.format(theme.build_format_items({
+      description = theme.format({
         {
           text = "Directory does not exist: ",
           style = theme.get_color("prompt_heading"),
@@ -950,7 +950,7 @@ local function confirm_directory_creation(
           text = ". Create it?",
           style = theme.get_color("prompt_heading"),
         },
-      })),
+      }),
       fuzzy = false,
       choices = {
         { id = "yes", label = "Yes" },
@@ -1187,7 +1187,8 @@ function mod.next_workspace()
 
     -- Save old workspace state before switching
     if
-      settings.session_enabled and not state.is_excluded_workspace(old_workspace)
+      settings.session_enabled
+      and not state.is_excluded_workspace(old_workspace)
     then
       state.save_workspace_state(old_workspace, window)
     end
@@ -1249,7 +1250,8 @@ function mod.previous_workspace()
 
     -- Save old workspace state before switching
     if
-      settings.session_enabled and not state.is_excluded_workspace(old_workspace)
+      settings.session_enabled
+      and not state.is_excluded_workspace(old_workspace)
     then
       state.save_workspace_state(old_workspace, window)
     end

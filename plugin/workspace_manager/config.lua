@@ -15,9 +15,9 @@ function mod.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
   local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel")
     or "  Esc=cancel"
-  return wezterm.format(theme.build_format_items({
+  return theme.format({
     { text = text, style = theme.get_color("muted") },
-  }))
+  })
 end
 
 ---Registers workspace tracking, session persistence, and switcher keys.
@@ -47,21 +47,24 @@ function mod.apply_to_config(config)
     if settings.session_periodic_save_interval then
       ---Schedules the next session save after the configured interval.
       local function periodic_save()
-        wezterm.time.call_after(settings.session_periodic_save_interval, function()
-          if settings.session_periodic_save_all then
-            for _, ws_name in ipairs(mux.get_workspace_names()) do
-              if not state.is_excluded_workspace(ws_name) then
-                state.save_workspace_state(ws_name)
+        wezterm.time.call_after(
+          settings.session_periodic_save_interval,
+          function()
+            if settings.session_periodic_save_all then
+              for _, ws_name in ipairs(mux.get_workspace_names()) do
+                if not state.is_excluded_workspace(ws_name) then
+                  state.save_workspace_state(ws_name)
+                end
+              end
+            else
+              local active = mux.get_active_workspace()
+              if active and not state.is_excluded_workspace(active) then
+                state.save_workspace_state(active)
               end
             end
-          else
-            local active = mux.get_active_workspace()
-            if active and not state.is_excluded_workspace(active) then
-              state.save_workspace_state(active)
-            end
+            periodic_save()
           end
-          periodic_save()
-        end)
+        )
       end
       periodic_save()
     end

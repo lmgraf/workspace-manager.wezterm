@@ -115,6 +115,13 @@ function mod.build_format_items(segments)
   return items
 end
 
+---@param segments table<integer, WorkspaceManagerStyledSegment?>
+---@return string
+function mod.format(segments)
+  -- Avoid writing wezterm.format every time
+  return wezterm.format(mod.build_format_items(segments))
+end
+
 ---@param icon string
 ---@return string
 local function trim_icon(icon) return icon:match("^%s*(.-)%s*$") end
