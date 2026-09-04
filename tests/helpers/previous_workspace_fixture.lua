@@ -26,6 +26,7 @@ function M.new()
       fg = function() return {} end,
       get_color = function() return "" end,
       build_heading = function() return {} end,
+      format = function() return "" end,
       build_format_items = function(segments)
         local items = {}
         for _, segment in ipairs(segments) do

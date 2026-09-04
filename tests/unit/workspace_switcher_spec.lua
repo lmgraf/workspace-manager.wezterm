@@ -258,6 +258,15 @@ describe("workspace switcher", function()
     assert.are.equal("Enter=switch | Esc=cancel", ctx.selector.description)
     assert.are.equal("Switch to: ", ctx.selector.fuzzy_description)
 
+    ctx.settings.filter_choices = nil
+    ctx.settings.show_switcher_hints = true
+    ctx.settings.show_current_workspace_hint = false
+    ctx:open()
+    assert.are.equal(
+      "^D=del ^U=unload ^N=new ^P=path ^R=rename | Switch to: ",
+      ctx.selector.fuzzy_description
+    )
+
     ctx.settings.filter_choices = function(choice) return choice.id == "B" end
     ctx:open()
     assert.are.same({ "B" }, { ctx.selector.choices[1].id })

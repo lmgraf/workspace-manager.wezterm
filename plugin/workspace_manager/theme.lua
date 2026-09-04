@@ -21,7 +21,9 @@ local DEFAULT_COLORS = {
 ---@param key string
 ---@return WorkspaceManagerThemeStyle?
 function mod.get_color(key)
-  if settings.colors and settings.colors[key] ~= nil then return settings.colors[key] end
+  if settings.colors and settings.colors[key] ~= nil then
+    return settings.colors[key]
+  end
   return DEFAULT_COLORS[key]
 end
 
@@ -93,12 +95,21 @@ function mod.append_segment(items, text, style)
 end
 
 ---Flattens ordered styled text segments into WezTerm format items.
----@param segments WorkspaceManagerStyledSegment[]
+---@param segments table<integer, WorkspaceManagerStyledSegment?>
 ---@return FormatItem[]
 function mod.build_format_items(segments)
   local items = {}
-  for _, segment in ipairs(segments) do
-    mod.append_segment(items, segment.text, segment.style)
+  local last_index = 0
+  for index in pairs(segments) do
+    if type(index) == "number" and index > last_index then
+      last_index = index
+    end
+  end
+  for index = 1, last_index do
+    local segment = segments[index]
+    if segment then
+      mod.append_segment(items, segment.text, segment.style)
+    end
   end
   table.insert(items, "ResetAttributes")
   return items
