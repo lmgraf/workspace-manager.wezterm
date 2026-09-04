@@ -102,26 +102,20 @@ helpers.setup(M)
 history.setup(M, { helpers = helpers })
 state.setup(M, { helpers = helpers, history = history })
 data.setup(M, { helpers = helpers, state = state })
-actions.setup(
-  M,
-  {
-    theme = theme,
-    helpers = helpers,
-    history = history,
-    state = state,
-    data = data,
-  }
-)
-config_mod.setup(
-  M,
-  {
-    theme = theme,
-    helpers = helpers,
-    history = history,
-    state = state,
-    actions = actions,
-  }
-)
+actions.setup(M, {
+  theme = theme,
+  helpers = helpers,
+  history = history,
+  state = state,
+  data = data,
+})
+config_mod.setup(M, {
+  theme = theme,
+  helpers = helpers,
+  history = history,
+  state = state,
+  actions = actions,
+})
 
 -- Public API
 M.workspace_switcher = actions.workspace_switcher

@@ -14,19 +14,18 @@ describe("workspace state saving", function()
     modules.reset()
     state_value, state_error = nil, nil
     write_ok, write_error = true, nil
-    write_state = spy.new(function()
-      return write_ok, write_error
-    end)
+    write_state = spy.new(function() return write_ok, write_error end)
     create_directory = spy.new(function() end)
 
     package.loaded.wezterm = fake_wezterm.new({ mux = {} }).wezterm
     package.loaded["session.workspace_state"] = {
       get_workspace_state_for = function(name)
         if state_error then error(state_error) end
-        return state_value or {
-          workspace = name,
-          window_states = { { window_id = 1 } },
-        }
+        return state_value
+          or {
+            workspace = name,
+            window_states = { { window_id = 1 } },
+          }
       end,
     }
     package.loaded["session.tab_state"] = {}

@@ -66,12 +66,8 @@ run_case("formats switcher labels with real WezTerm APIs", function()
     workspace_icon_saved = "◇",
     entry_icon = "",
   })
-  local escaped = theme.build_switcher_label(
-    "界  ",
-    "workspace",
-    " (2t 3p)",
-    "workspace"
-  )
+  local escaped =
+    theme.build_switcher_label("界  ", "workspace", " (2t 3p)", "workspace")
   check(escaped:find("界", 1, true), "formatted label lost its icon")
   check(escaped:find("workspace", 1, true), "formatted label lost its name")
   check(escaped:find("2t 3p", 1, true), "formatted label lost its counts")
@@ -122,9 +118,7 @@ wezterm.on("mux-startup", function()
       local row = cursor.y - pane:get_dimensions().physical_top
       local histories = {
         "SAVED-FIRST\r\n\x1b[31mSAVED-LAST\x1b[0m\r\n",
-        "LONG-FIRST\r\n"
-          .. string.rep("older output\r\n", 30)
-          .. "LONG-LAST",
+        "LONG-FIRST\r\n" .. string.rep("older output\r\n", 30) .. "LONG-LAST",
         string.rep("W", 80) .. "\r\nWRAPPED-LAST",
       }
       for _, history in ipairs(histories) do

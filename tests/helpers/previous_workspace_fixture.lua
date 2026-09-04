@@ -61,7 +61,9 @@ function M.new()
         return {
           { id = "Custom", name = "Custom", label = "Custom" },
           { id = "~/project", label = "Project" },
-        }, false, {}
+        },
+          false,
+          {}
       end,
       get_current_mux_window = function(name) return { name = name } end,
     },

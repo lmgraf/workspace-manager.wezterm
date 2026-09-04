@@ -69,9 +69,10 @@ describe("deferred pane restoration", function()
   end)
 
   it("bounds a prompt that never becomes stable", function()
-    tab_state.restore_pane_when_stable(tree, function()
-      restored = restored + 1
-    end)
+    tab_state.restore_pane_when_stable(
+      tree,
+      function() restored = restored + 1 end
+    )
     for i = 1, 50 do
       screen = tostring(i)
       tick(1)

@@ -19,7 +19,9 @@ function pub.write_file(file_path, str)
     end
     local closed, close_err = handle:close()
     handle = nil
-    if not closed then error("Could not close file: " .. tostring(close_err)) end
+    if not closed then
+      error("Could not close file: " .. tostring(close_err))
+    end
   end)
   if handle then pcall(function() handle:close() end) end
   return suc, err

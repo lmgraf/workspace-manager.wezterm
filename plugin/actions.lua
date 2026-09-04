@@ -44,15 +44,12 @@ local function get_resolved_switcher_keys()
     if override == false then
       -- explicitly disabled
     elseif override == nil then
-      table.insert(
-        result,
-        {
-          key = def.key,
-          mods = def.mods,
-          hint = def.hint,
-          action_name = action_name,
-        }
-      )
+      table.insert(result, {
+        key = def.key,
+        mods = def.mods,
+        hint = def.hint,
+        action_name = action_name,
+      })
     else
       table.insert(result, {
         key = override.key,
@@ -213,7 +210,9 @@ local function close_workspace_panes(workspace_name, window)
     return false
   end
 
-  local parse_ok, panes = pcall(function() return wezterm.json_parse(stdout) end)
+  local parse_ok, panes = pcall(
+    function() return wezterm.json_parse(stdout) end
+  )
   if not parse_ok or type(panes) ~= "table" then
     wezterm.log_warn(
       "workspace_manager: failed to parse pane list: " .. tostring(panes)
@@ -410,8 +409,7 @@ local function build_switcher_context(window)
   end
 
   local current_workspace = window:active_workspace()
-  local current_normalized =
-    helpers.normalize_workspace_name(current_workspace)
+  local current_normalized = helpers.normalize_workspace_name(current_workspace)
   local context = {
     workspace_choices = workspace_choices,
     custom_choices = custom_choices,
@@ -534,20 +532,22 @@ local function build_switcher_descriptions(current_display)
       { Text = current_display },
       theme.fg(theme.get_color("muted")),
       { Text = " |" .. hints_infix .. " Esc=cancel" },
-    }), wezterm.format({
-      theme.fg(theme.get_color("prompt_accent")),
-      { Text = current_display },
-      theme.fg(theme.get_color("muted")),
-      { Text = " |" .. hints_infix .. " Switch to: " },
-    })
+    }),
+      wezterm.format({
+        theme.fg(theme.get_color("prompt_accent")),
+        { Text = current_display },
+        theme.fg(theme.get_color("muted")),
+        { Text = " |" .. hints_infix .. " Switch to: " },
+      })
   end
   return wezterm.format({
     theme.fg(theme.get_color("muted")),
     { Text = "Enter=switch |" .. hints_infix .. " Esc=cancel" },
-  }), wezterm.format({
-    theme.fg(theme.get_color("muted")),
-    { Text = "Switch to: " },
-  })
+  }),
+    wezterm.format({
+      theme.fg(theme.get_color("muted")),
+      { Text = "Switch to: " },
+    })
 end
 
 -- ============================================================================
@@ -684,9 +684,7 @@ local function delete_selected_workspace(context, window, pane, id)
     helpers.notify(window, "Workspace", "Cannot delete active workspace")
   elseif context.saved_workspace_ids[id] then
     -- Saved-only workspace: remove its snapshot and history.
-    wezterm.log_info(
-      "workspace_manager: deleting saved-only workspace: " .. id
-    )
+    wezterm.log_info("workspace_manager: deleting saved-only workspace: " .. id)
     remove_workspace_history(id)
     if M_ref.session_enabled then state.delete_workspace_state(id) end
     wezterm.emit(
@@ -700,9 +698,7 @@ local function delete_selected_workspace(context, window, pane, id)
       remove_workspace_history(id)
       if M_ref.session_enabled then
         state.delete_workspace_state(id)
-        wezterm.log_info(
-          "workspace_manager: deleted saved state for: " .. id
-        )
+        wezterm.log_info("workspace_manager: deleted saved state for: " .. id)
       end
       wezterm.emit(
         "workspace_manager.workspace_switcher.deleted",
@@ -826,12 +822,10 @@ local function confirm_directory_creation(
       title = "Create directory",
       description = wezterm.format(
         theme.build_heading("Directory does not exist: ")
-      )
-        .. wezterm.format({
-          theme.fg(theme.get_color("prompt_accent")),
-          { Text = helpers.normalize_workspace_name(display_path) },
-        })
-        .. wezterm.format(theme.build_heading(". Create it?")),
+      ) .. wezterm.format({
+        theme.fg(theme.get_color("prompt_accent")),
+        { Text = helpers.normalize_workspace_name(display_path) },
+      }) .. wezterm.format(theme.build_heading(". Create it?")),
       fuzzy = false,
       choices = {
         { id = "yes", label = "Yes" },
@@ -966,9 +960,11 @@ function mod.workspace_switcher()
         fuzzy = M_ref.start_in_fuzzy_mode,
         fuzzy_description = fuzzy_description,
         choices = choices,
-        action = wezterm.action_callback(function(win, p, id, label)
-          handle_switcher_selection(context, win, p, id, label)
-        end),
+        action = wezterm.action_callback(
+          function(win, p, id, label)
+            handle_switcher_selection(context, win, p, id, label)
+          end
+        ),
       }),
       pane
     )

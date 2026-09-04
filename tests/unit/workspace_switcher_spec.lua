@@ -13,11 +13,16 @@ describe("workspace switcher", function()
     assert.are.equal(name, ctx.current)
     local before = ctx:recorded(event_prefix .. "switching")[1]
     assert.are.same({ "mux:A", ctx.pane, "A", name }, {
-      before[1], before[2], before[3], before[4],
+      before[1],
+      before[2],
+      before[3],
+      before[4],
     })
     local after = ctx:recorded(event_prefix .. event)[1]
     assert.are.same({ "mux:" .. name, ctx.pane, name }, {
-      after[1], after[2], after[3],
+      after[1],
+      after[2],
+      after[3],
     })
     assert.are.equal(has_path_arg and 4 or 3, after.n)
     assert.are.equal(event_path, after[4])
@@ -249,75 +254,81 @@ describe("workspace switcher", function()
     assert.are.equal(0, #ctx:recorded("save"))
   end)
 
-  it("handles creation prompts, directory confirmation, and cancellation", function()
-    ctx:choose("B", "new")
-    ctx.prompt.action(ctx.window, ctx.pane, "New")
-    check_switch("New", "created", 1)
+  it(
+    "handles creation prompts, directory confirmation, and cancellation",
+    function()
+      ctx:choose("B", "new")
+      ctx.prompt.action(ctx.window, ctx.pane, "New")
+      check_switch("New", "created", 1)
 
-    ctx:reset()
-    ctx:choose("B", "new_at_path")
-    ctx.prompt.action(ctx.window, ctx.pane, "~/new")
-    check_switch("~/new", "created", 1, "/home/test/new", true)
-
-    for _, answer in ipairs({ "yes", "no", "cancel", "failure" }) do
       ctx:reset()
-      ctx.directory_exists, ctx.zoxide = false, true
       ctx:choose("B", "new_at_path")
       ctx.prompt.action(ctx.window, ctx.pane, "~/new")
-      assert.are.equal("A", ctx.current)
-      assert.are.equal("Create directory", ctx.selector.title)
-      ctx.mkdir_ok = answer ~= "failure"
-      local id = answer == "failure" and "yes" or answer
-      if answer == "cancel" then id = nil end
-      ctx.selector.action(ctx.window, ctx.pane, id, id)
-      if answer == "yes" then
-        check_switch("~/new", "created", 1, "/home/test/new", true)
-        assert.are.equal("/home/test/new", ctx:recorded("mkdir")[1][1])
-        assert.are.equal("~/new", ctx:recorded("command")[1][1][4])
-      else
+      check_switch("~/new", "created", 1, "/home/test/new", true)
+
+      for _, answer in ipairs({ "yes", "no", "cancel", "failure" }) do
+        ctx:reset()
+        ctx.directory_exists, ctx.zoxide = false, true
+        ctx:choose("B", "new_at_path")
+        ctx.prompt.action(ctx.window, ctx.pane, "~/new")
         assert.are.equal("A", ctx.current)
-        assert.are.equal(0, #ctx:recorded("save"))
-        if answer == "failure" then
-          assert.are.equal(1, #ctx:recorded("notify"))
+        assert.are.equal("Create directory", ctx.selector.title)
+        ctx.mkdir_ok = answer ~= "failure"
+        local id = answer == "failure" and "yes" or answer
+        if answer == "cancel" then id = nil end
+        ctx.selector.action(ctx.window, ctx.pane, id, id)
+        if answer == "yes" then
+          check_switch("~/new", "created", 1, "/home/test/new", true)
+          assert.are.equal("/home/test/new", ctx:recorded("mkdir")[1][1])
+          assert.are.equal("~/new", ctx:recorded("command")[1][1][4])
+        else
+          assert.are.equal("A", ctx.current)
+          assert.are.equal(0, #ctx:recorded("save"))
+          if answer == "failure" then
+            assert.are.equal(1, #ctx:recorded("notify"))
+          end
         end
       end
-    end
 
-    for _, pending in ipairs({ "new", "new_at_path", "rename" }) do
-      ctx:reset()
-      ctx:choose("B", pending)
-      ctx.prompt.action(ctx.window, ctx.pane, "")
-      assert.are.equal("A", ctx.current)
-      ctx:flush_reopen()
-      assert.are.equal("Workspace Switcher", ctx.selector.title)
-    end
-
-    ctx:reset()
-    ctx:choose(nil, "delete")
-    assert.are.equal(1, #ctx:recorded("workspace_manager.switcher.canceled"))
-    assert.are.equal(0, #ctx.timers)
-    assert.are.equal(0, #ctx:recorded("delete"))
-    ctx:choose("B")
-    assert.are.equal("B", ctx.current)
-  end)
-
-  it("protects current and custom entries while deleting valid targets", function()
-    for _, id in ipairs({ "A", "Custom", "Saved", "B" }) do
-      ctx:reset()
-      ctx:choose(id, "delete")
-      if id == "A" or id == "Custom" then
-        assert.are.equal(0, #ctx:recorded("delete"))
-        assert.are.equal(1, #ctx:recorded("notify"))
-      else
-        assert.are.equal(id, ctx:recorded("delete")[1][1])
-        assert.is_nil(ctx.fake.GLOBAL.workspace_access_times[id])
-        assert.are.equal(1, #ctx:recorded(event_prefix .. "deleted"))
-        if id == "B" then assert.are.equal(3, #ctx:recorded("command")) end
+      for _, pending in ipairs({ "new", "new_at_path", "rename" }) do
+        ctx:reset()
+        ctx:choose("B", pending)
+        ctx.prompt.action(ctx.window, ctx.pane, "")
+        assert.are.equal("A", ctx.current)
+        ctx:flush_reopen()
+        assert.are.equal("Workspace Switcher", ctx.selector.title)
       end
-      ctx:flush_reopen()
-      assert.are.equal("Workspace Switcher", ctx.selector.title)
+
+      ctx:reset()
+      ctx:choose(nil, "delete")
+      assert.are.equal(1, #ctx:recorded("workspace_manager.switcher.canceled"))
+      assert.are.equal(0, #ctx.timers)
+      assert.are.equal(0, #ctx:recorded("delete"))
+      ctx:choose("B")
+      assert.are.equal("B", ctx.current)
     end
-  end)
+  )
+
+  it(
+    "protects current and custom entries while deleting valid targets",
+    function()
+      for _, id in ipairs({ "A", "Custom", "Saved", "B" }) do
+        ctx:reset()
+        ctx:choose(id, "delete")
+        if id == "A" or id == "Custom" then
+          assert.are.equal(0, #ctx:recorded("delete"))
+          assert.are.equal(1, #ctx:recorded("notify"))
+        else
+          assert.are.equal(id, ctx:recorded("delete")[1][1])
+          assert.is_nil(ctx.fake.GLOBAL.workspace_access_times[id])
+          assert.are.equal(1, #ctx:recorded(event_prefix .. "deleted"))
+          if id == "B" then assert.are.equal(3, #ctx:recorded("command")) end
+        end
+        ctx:flush_reopen()
+        assert.are.equal("Workspace Switcher", ctx.selector.title)
+      end
+    end
+  )
 
   it("unloads only live targets and preserves state on failures", function()
     ctx:choose("B", "unload")
@@ -371,8 +382,10 @@ describe("workspace switcher", function()
       assert.are.equal(0, #ctx:recorded(event_prefix .. "unloaded"))
       assert.are.equal(0, #ctx:recorded("delete"))
       assert.are.equal(2, ctx.fake.GLOBAL.workspace_access_times.B)
-      assert.are.equal(failure == "save" and 0 or failure == "list" and 1 or 3,
-        #ctx:recorded("command"))
+      assert.are.equal(
+        failure == "save" and 0 or failure == "list" and 1 or 3,
+        #ctx:recorded("command")
+      )
       assert.is_true(#ctx:recorded("notify") >= 1)
       ctx:flush_reopen()
     end

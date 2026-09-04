@@ -18,9 +18,7 @@ describe("scrollback capture and replay", function()
           return { is_spawnable = function() return true end }
         end,
       },
-      shell_join_args = function()
-        error("must not construct shell commands")
-      end,
+      shell_join_args = function() error("must not construct shell commands") end,
     }).wezterm
     pane_tree = require("session.pane_tree")
     tab_state = require("session.tab_state")

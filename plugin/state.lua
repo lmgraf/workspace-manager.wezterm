@@ -123,11 +123,11 @@ function mod.save_workspace_state(workspace_name, gui_win)
     end
     local path = get_state_file_path(workspace_name)
     local write_ok, write_err = file_io.write_state(path, state, "workspace")
-    if not write_ok then error(write_err or "failed to write workspace state") end
+    if not write_ok then
+      error(write_err or "failed to write workspace state")
+    end
     wezterm.log_info(
-      "workspace_manager: saved state for workspace '"
-        .. workspace_name
-        .. "'"
+      "workspace_manager: saved state for workspace '" .. workspace_name .. "'"
     )
   end)
   if not ok then

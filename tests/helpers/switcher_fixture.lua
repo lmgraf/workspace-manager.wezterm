@@ -115,9 +115,7 @@ function M.new()
       notify = function(_, _, message) ctx:record("notify", message) end,
     },
     history = {
-      record_workspace_switch = function(...)
-        ctx:record("history_switch", ...)
-      end,
+      record_workspace_switch = function(...) ctx:record("history_switch", ...) end,
       update_access_time = function(...) ctx:record("access", ...) end,
       save = function() ctx:record("save_history") end,
     },
@@ -129,9 +127,7 @@ function M.new()
       end,
       restore_workspace_state = function(...) ctx:record("restore", ...) end,
       delete_workspace_state = function(...) ctx:record("delete", ...) end,
-      rename_workspace_state = function(...)
-        ctx:record("rename_state", ...)
-      end,
+      rename_workspace_state = function(...) ctx:record("rename_state", ...) end,
       load_workspace_state = function()
         return {
           window_states = ctx.saved_focus and {
@@ -164,7 +160,9 @@ function M.new()
             label = "Project",
           },
           { id = "~/raw", normalized = "~/raw", label = "Raw path" },
-        }, ctx.zoxide, { A = "Current label", B = "Other label" }
+        },
+          ctx.zoxide,
+          { A = "Current label", B = "Other label" }
       end,
       get_current_mux_window = function(name) return "mux:" .. name end,
       get_workspace_counts = function()
@@ -195,9 +193,7 @@ function M.new()
     self.actions.setup(self.settings, deps)
   end
 
-  function ctx:open()
-    self.actions.workspace_switcher()(window, pane)
-  end
+  function ctx:open() self.actions.workspace_switcher()(window, pane) end
 
   function ctx:choose(id, pending)
     self:open()
