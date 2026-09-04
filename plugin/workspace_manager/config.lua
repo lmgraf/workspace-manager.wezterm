@@ -26,7 +26,7 @@ function mod.apply_to_config(config)
   -- Plugin actions track switches directly. Observe external switches too:
   -- WezTerm can reuse a focused GUI window without a focus-change event.
   ---Tracks an externally activated workspace when its GUI window is focused.
-  ---@param window? GuiWindow
+  ---@param window? Window
   local function track_workspace(window)
     if not window or not window:is_focused() then return end
     history.record_workspace_switch(

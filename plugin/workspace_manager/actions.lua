@@ -187,7 +187,7 @@ end
 -- ============================================================================
 
 ---Switches workspaces and records the transition in history.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param opts WorkspaceManagerSwitchOptions
 local function switch_workspace(window, pane, opts)
@@ -198,7 +198,7 @@ end
 
 ---Closes all panes belonging to a workspace.
 ---@param workspace_name string
----@param window GuiWindow
+---@param window Window
 ---@return boolean
 local function close_workspace_panes(workspace_name, window)
   wezterm.log_info(
@@ -362,7 +362,7 @@ end
 ---Renames or merges a workspace and its persisted state.
 ---@param old_name string
 ---@param new_name? string
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 local function do_rename_workspace(old_name, new_name, window, pane)
   if not new_name or new_name == "" or new_name == old_name then return end
@@ -438,7 +438,7 @@ end
 -- ============================================================================
 
 ---Builds the unformatted choice collections used by the switcher.
----@param window GuiWindow
+---@param window Window
 ---@return WorkspaceManagerSwitcherContext
 local function build_switcher_context(window)
   local workspace_choices
@@ -624,7 +624,7 @@ end
 -- ============================================================================
 
 ---Reopens the workspace switcher after a nested action.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 local function reopen_switcher(window, pane)
   wezterm.time.call_after(
@@ -634,7 +634,7 @@ local function reopen_switcher(window, pane)
 end
 
 ---Saves and announces the source before switching workspaces.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param opts WorkspaceManagerSwitchOptions
 local function switch_from_switcher(window, pane, opts)
@@ -708,7 +708,7 @@ local function restore_workspace_focus(workspace_name)
 end
 
 ---Selects an existing live workspace.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param workspace_name string
 local function select_live_workspace(window, pane, workspace_name)
@@ -724,7 +724,7 @@ local function select_live_workspace(window, pane, workspace_name)
 end
 
 ---Selects and restores a saved-only workspace.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param workspace_name string
 local function select_saved_workspace(window, pane, workspace_name)
@@ -741,7 +741,7 @@ end
 
 ---Creates a workspace from a configured or zoxide suggestion.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param id string
 local function select_custom_entry(context, window, pane, id)
@@ -768,7 +768,7 @@ end
 
 ---Deletes the selected saved or live workspace.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param id string
 local function delete_selected_workspace(context, window, pane, id)
@@ -813,7 +813,7 @@ end
 
 ---Saves and closes the selected live workspace.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param id string
 local function unload_selected_workspace(context, window, pane, id)
@@ -864,7 +864,7 @@ end
 
 ---Prompts for a replacement workspace name.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param id string
 local function prompt_workspace_rename(context, window, pane, id)
@@ -897,7 +897,7 @@ local function prompt_workspace_rename(context, window, pane, id)
 end
 
 ---Prompts for a new workspace name.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 local function prompt_workspace_name(window, pane)
   window:perform_action(
@@ -922,7 +922,7 @@ local function prompt_workspace_name(window, pane)
 end
 
 ---Confirms and creates a missing workspace directory.
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param path string expanded path
 ---@param display_path string user-entered path
@@ -983,7 +983,7 @@ end
 
 ---Creates a workspace rooted at a path, prompting to create it if needed.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param path string
 local function create_workspace_at_path(context, window, pane, path)
@@ -1015,7 +1015,7 @@ end
 
 ---Prompts for a new workspace path.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 local function prompt_workspace_path(context, window, pane)
   window:perform_action(
@@ -1037,7 +1037,7 @@ end
 
 ---Dispatches the selection or configured action that closed the switcher.
 ---@param context WorkspaceManagerSwitcherContext
----@param window GuiWindow
+---@param window Window
 ---@param pane Pane
 ---@param id? string
 ---@param label? string

@@ -113,7 +113,7 @@ end
 
 ---Saves a workspace and optional GUI window dimensions.
 ---@param workspace_name string
----@param gui_win? GuiWindow
+---@param gui_win? Window
 ---@return boolean success
 ---@return string|nil error
 function mod.save_workspace_state(workspace_name, gui_win)
@@ -131,7 +131,7 @@ function mod.save_workspace_state(workspace_name, gui_win)
 
     -- Inject full window pixel dimensions when called from a GUI event context.
     -- mux_window:gui_window() only works for the *active* workspace, so we accept the
-    -- GuiWindow directly from callers that already have it.
+    -- GUI window directly from callers that already have it.
     if gui_win then
       local dims = gui_win:get_dimensions()
       local target_id = gui_win:mux_window():window_id()

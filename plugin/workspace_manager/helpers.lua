@@ -9,7 +9,7 @@ mod.is_windows = wezterm.target_triple:find("windows") ~= nil
 mod.path_sep = mod.is_windows and "\\" or "/"
 
 ---Shows a toast when plugin notifications are enabled.
----@param window GuiWindow
+---@param window Window
 ---@param title string
 ---@param message string
 ---@param timeout? integer
