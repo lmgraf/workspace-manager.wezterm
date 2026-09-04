@@ -1,23 +1,13 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
-
-local M_ref -- reference to plugin config table (set via setup)
-local theme -- set via setup
-local helpers -- set via setup
-local history -- set via setup
-local state -- set via setup
-local actions -- set via setup
+local settings = require("workspace_manager.settings")
+local theme = require("workspace_manager.theme")
+local helpers = require("workspace_manager.helpers")
+local history = require("workspace_manager.history")
+local state = require("workspace_manager.state")
+local actions = require("workspace_manager.actions")
 
 local mod = {}
-
-function mod.setup(plugin, deps)
-  M_ref = plugin
-  theme = deps.theme
-  helpers = deps.helpers
-  history = deps.history
-  state = deps.state
-  actions = deps.actions
-end
 
 function mod.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
@@ -43,16 +33,16 @@ function mod.apply_to_config(config)
   wezterm.on("update-status", track_workspace)
 
   -- Session persistence setup
-  if M_ref.session_enabled then
+  if settings.session_enabled then
     -- Apply max scrollback lines config
-    local pane_tree_mod = require("session.pane_tree")
-    pane_tree_mod.max_nlines = M_ref.session_max_scrollback_lines
+    local pane_tree_mod = require("workspace_manager.session.pane_tree")
+    pane_tree_mod.max_nlines = settings.session_max_scrollback_lines
 
     -- Periodic save timer
-    if M_ref.session_periodic_save_interval then
+    if settings.session_periodic_save_interval then
       local function periodic_save()
-        wezterm.time.call_after(M_ref.session_periodic_save_interval, function()
-          if M_ref.session_periodic_save_all then
+        wezterm.time.call_after(settings.session_periodic_save_interval, function()
+          if settings.session_periodic_save_all then
             for _, ws_name in ipairs(mux.get_workspace_names()) do
               if not state.is_excluded_workspace(ws_name) then
                 state.save_workspace_state(ws_name)
@@ -71,7 +61,7 @@ function mod.apply_to_config(config)
     end
 
     -- Restore most recently used workspace on startup
-    if M_ref.session_restore_on_startup then
+    if settings.session_restore_on_startup then
       wezterm.on("gui-startup", function(_cmd)
         local workspace_name = state.get_most_recent_saved_workspace()
         if not workspace_name then return end
@@ -152,25 +142,25 @@ function mod.apply_default_keybindings(config)
   table.insert(keys, {
     key = "s",
     mods = "LEADER",
-    action = M_ref.workspace_switcher(),
+    action = actions.workspace_switcher(),
   })
 
   table.insert(keys, {
     key = "S",
     mods = "LEADER",
-    action = M_ref.switch_to_previous_workspace(),
+    action = actions.switch_to_previous_workspace(),
   })
 
   table.insert(keys, {
     key = "]",
     mods = "CTRL",
-    action = M_ref.next_workspace(),
+    action = actions.next_workspace(),
   })
 
   table.insert(keys, {
     key = "[",
     mods = "CTRL",
-    action = M_ref.previous_workspace(),
+    action = actions.previous_workspace(),
   })
 
   config.keys = keys

@@ -20,8 +20,8 @@ describe("scrollback capture and replay", function()
       },
       shell_join_args = function() error("must not construct shell commands") end,
     }).wezterm
-    pane_tree = require("session.pane_tree")
-    tab_state = require("session.tab_state")
+    pane_tree = require("workspace_manager.session.pane_tree")
+    tab_state = require("workspace_manager.session.tab_state")
     pane = {
       send_text = function() error("must not send commands to the shell") end,
       inject_output = function(_, text) injected = text end,

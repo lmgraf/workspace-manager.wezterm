@@ -1,13 +1,12 @@
 local wezterm = require("wezterm")
 local act = wezterm.action
 local mux = wezterm.mux
-
-local M_ref -- reference to plugin config table (set via setup)
-local theme -- set via setup
-local helpers -- set via setup
-local history -- set via setup
-local state -- set via setup
-local data -- set via setup
+local settings = require("workspace_manager.settings")
+local theme = require("workspace_manager.theme")
+local helpers = require("workspace_manager.helpers")
+local history = require("workspace_manager.history")
+local state = require("workspace_manager.state")
+local data = require("workspace_manager.data")
 
 local mod = {}
 
@@ -33,11 +32,11 @@ local SWITCHER_KEY_ORDER = {
   "rename",
 }
 
--- Returns the resolved key config as an ordered list, merging M_ref.switcher_keys overrides
+-- Returns the resolved key config as an ordered list, merging settings.switcher_keys overrides
 -- with defaults. Each entry: { key, mods, hint, action_name }. Disabled actions (false) omitted.
 local function get_resolved_switcher_keys()
   local result = {}
-  local user_keys = M_ref.switcher_keys or {}
+  local user_keys = settings.switcher_keys or {}
   for _, action_name in ipairs(SWITCHER_KEY_ORDER) do
     local override = user_keys[action_name]
     local def = DEFAULT_SWITCHER_KEYS[action_name]
@@ -136,15 +135,6 @@ function mod.switcher_keymap_cancel(key, mods)
       window:perform_action(act.SendKey({ key = key }), pane)
     end),
   }
-end
-
-function mod.setup(plugin, deps)
-  M_ref = plugin
-  theme = deps.theme
-  helpers = deps.helpers
-  history = deps.history
-  state = deps.state
-  data = deps.data
 end
 
 -- ============================================================================
@@ -365,7 +355,7 @@ local function do_rename_workspace(old_name, new_name, window, pane)
   end
 
   -- Rename state file if it exists
-  if M_ref.session_enabled then
+  if settings.session_enabled then
     state.rename_workspace_state(old_name, new_normalized)
   end
 
@@ -390,7 +380,7 @@ end
 -- Keep original choices alongside display labels for callback dispatch.
 local function build_switcher_context(window)
   local workspace_choices
-  if M_ref.workspace_switcher_sort == "alphabetical" then
+  if settings.workspace_switcher_sort == "alphabetical" then
     workspace_choices = data.get_workspace_choices_alphabetical()
   else
     workspace_choices = data.get_workspace_choices()
@@ -404,7 +394,7 @@ local function build_switcher_context(window)
     data.get_custom_choices(workspace_normalized_set)
 
   local workspace_counts
-  if M_ref.workspace_count_format then
+  if settings.workspace_count_format then
     workspace_counts = data.get_workspace_counts()
   end
 
@@ -436,12 +426,12 @@ local function build_switcher_context(window)
 end
 
 local function get_switcher_filter()
-  if type(M_ref.filter_choices) == "function" then
-    return M_ref.filter_choices
+  if type(settings.filter_choices) == "function" then
+    return settings.filter_choices
   end
-  if type(M_ref.filter_choices) == "table" then
+  if type(settings.filter_choices) == "table" then
     local set = {}
-    for _, path in ipairs(M_ref.filter_choices) do
+    for _, path in ipairs(settings.filter_choices) do
       set[helpers.normalize_workspace_name(path)] = true
     end
     return function(choice)
@@ -456,17 +446,17 @@ local function format_workspace_choice(context, choice, is_current)
   if context.workspace_counts and context.workspace_counts[choice.id] then
     count_suffix = data.format_counts(
       context.workspace_counts[choice.id],
-      M_ref.workspace_count_format
+      settings.workspace_count_format
     )
   end
 
   local display_label = context.label_overrides[choice.id] or choice.label
   local category = is_current and "current" or "workspace"
   if choice.is_saved and not is_current then category = "saved" end
-  local ws_icon = M_ref.workspace_icon or "●"
-  local icon = is_current and (M_ref.workspace_icon_current or ws_icon)
+  local ws_icon = settings.workspace_icon or "●"
+  local icon = is_current and (settings.workspace_icon_current or ws_icon)
     or ws_icon
-  if category == "saved" then icon = M_ref.workspace_icon_saved or "○" end
+  if category == "saved" then icon = settings.workspace_icon_saved or "○" end
   return {
     id = choice.id,
     label = theme.build_switcher_label(
@@ -487,7 +477,7 @@ local function build_switcher_choices(context)
   for _, choice in ipairs(context.workspace_choices) do
     local is_current = choice.id == context.current_workspace
     local is_visible = not is_current
-      or M_ref.show_current_workspace_in_switcher
+      or settings.show_current_workspace_in_switcher
     if is_visible and (not filter or filter(choice)) then
       local group = is_current and current_choices
         or choice.is_saved and saved_choices
@@ -509,7 +499,7 @@ local function build_switcher_choices(context)
       table.insert(choices, {
         id = choice.id,
         label = theme.build_switcher_label(
-          M_ref.entry_icon or "·",
+          settings.entry_icon or "·",
           choice.label,
           "",
           "entry"
@@ -522,11 +512,11 @@ end
 
 local function build_switcher_descriptions(current_display)
   local hints_infix = ""
-  if M_ref.show_switcher_hints then
+  if settings.show_switcher_hints then
     local hints = mod.build_switcher_hints(" ")
     if hints ~= "" then hints_infix = " " .. hints .. " |" end
   end
-  if M_ref.show_current_workspace_hint then
+  if settings.show_current_workspace_hint then
     return wezterm.format({
       theme.fg(theme.get_color("prompt_accent")),
       { Text = current_display },
@@ -565,7 +555,7 @@ end
 local function switch_from_switcher(window, pane, opts)
   local old_workspace = window:active_workspace()
   if
-    M_ref.session_enabled
+    settings.session_enabled
     and old_workspace
     and not state.is_excluded_workspace(old_workspace)
   then
@@ -588,7 +578,7 @@ end
 -- The optional event argument is the expanded path for path/custom creations.
 local function finish_workspace_creation(pane, workspace_name, ...)
   local new_mux_window = data.get_current_mux_window(workspace_name)
-  if M_ref.session_enabled then
+  if settings.session_enabled then
     state.restore_workspace_state(workspace_name, new_mux_window)
   end
   wezterm.emit(
@@ -602,7 +592,7 @@ end
 
 local function restore_workspace_focus(workspace_name)
   if
-    not M_ref.session_enabled or state.is_excluded_workspace(workspace_name)
+    not settings.session_enabled or state.is_excluded_workspace(workspace_name)
   then
     return
   end
@@ -668,7 +658,7 @@ local function select_custom_entry(context, window, pane, id)
     spawn = { cwd = expanded_path or wezterm.home_dir },
   })
   if context.is_zoxide then
-    wezterm.run_child_process({ M_ref.zoxide_path, "add", "--", id })
+    wezterm.run_child_process({ settings.zoxide_path, "add", "--", id })
   end
   finish_workspace_creation(pane, workspace_name, expanded_path)
 end
@@ -686,7 +676,7 @@ local function delete_selected_workspace(context, window, pane, id)
     -- Saved-only workspace: remove its snapshot and history.
     wezterm.log_info("workspace_manager: deleting saved-only workspace: " .. id)
     remove_workspace_history(id)
-    if M_ref.session_enabled then state.delete_workspace_state(id) end
+    if settings.session_enabled then state.delete_workspace_state(id) end
     wezterm.emit(
       "workspace_manager.workspace_switcher.deleted",
       window,
@@ -696,7 +686,7 @@ local function delete_selected_workspace(context, window, pane, id)
   elseif context.existing_workspace_ids[id] then
     if close_workspace_panes(id, window) then
       remove_workspace_history(id)
-      if M_ref.session_enabled then
+      if settings.session_enabled then
         state.delete_workspace_state(id)
         wezterm.log_info("workspace_manager: deleted saved state for: " .. id)
       end
@@ -725,7 +715,7 @@ local function unload_selected_workspace(context, window, pane, id)
   elseif not context.existing_workspace_ids[id] then
     helpers.notify(window, "Workspace", "Cannot unload: not a live workspace")
   else
-    local should_save = M_ref.session_enabled
+    local should_save = settings.session_enabled
       and not state.is_excluded_workspace(id)
     if should_save then
       local save_ok, save_err = state.save_workspace_state(id)
@@ -865,7 +855,7 @@ local function create_workspace_at_path(context, window, pane, path)
       spawn = { cwd = expanded_path },
     })
     if context.is_zoxide then
-      wezterm.run_child_process({ M_ref.zoxide_path, "add", "--", path })
+      wezterm.run_child_process({ settings.zoxide_path, "add", "--", path })
     end
     finish_workspace_creation(pane, workspace_name, expanded_path)
   end
@@ -957,7 +947,7 @@ function mod.workspace_switcher()
       act.InputSelector({
         title = "Workspace Switcher",
         description = description,
-        fuzzy = M_ref.start_in_fuzzy_mode,
+        fuzzy = settings.start_in_fuzzy_mode,
         fuzzy_description = fuzzy_description,
         choices = choices,
         action = wezterm.action_callback(
@@ -982,7 +972,7 @@ function mod.switch_to_previous_workspace()
 
     -- Save current workspace state before switching
     if
-      M_ref.session_enabled
+      settings.session_enabled
       and not state.is_excluded_workspace(current_workspace)
     then
       state.save_workspace_state(current_workspace, window)
@@ -1041,7 +1031,7 @@ function mod.next_workspace()
 
     -- Save old workspace state before switching
     if
-      M_ref.session_enabled and not state.is_excluded_workspace(old_workspace)
+      settings.session_enabled and not state.is_excluded_workspace(old_workspace)
     then
       state.save_workspace_state(old_workspace, window)
     end
@@ -1101,7 +1091,7 @@ function mod.previous_workspace()
 
     -- Save old workspace state before switching
     if
-      M_ref.session_enabled and not state.is_excluded_workspace(old_workspace)
+      settings.session_enabled and not state.is_excluded_workspace(old_workspace)
     then
       state.save_workspace_state(old_workspace, window)
     end
@@ -1132,7 +1122,7 @@ end
 
 function mod.save_workspace()
   return wezterm.action_callback(function(window, pane)
-    if not M_ref.session_enabled then
+    if not settings.session_enabled then
       helpers.notify(window, "Workspace", "Session persistence is not enabled")
       return
     end

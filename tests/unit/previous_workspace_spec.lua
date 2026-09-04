@@ -129,7 +129,7 @@ describe("previous workspace tracking", function()
     function()
       ctx.settings.session_enabled = true
       ctx.settings.session_restore_on_startup = true
-      package.loaded["session.pane_tree"] = {}
+      package.loaded["workspace_manager.session.pane_tree"] = {}
       ctx.fake.mux.spawn_window = function(opts)
         ctx.current = opts.workspace
         return {}, ctx.pane, {}

@@ -1,17 +1,10 @@
 local wezterm = require("wezterm")
-
-local M_ref -- reference to plugin config table (set via setup)
-local helpers -- set via setup
+local helpers = require("workspace_manager.helpers")
 
 local mod = {}
 
 mod.HISTORY_DIR = wezterm.home_dir .. "/.local/share/wezterm"
 mod.HISTORY_FILE = mod.HISTORY_DIR .. "/workspace_history.json"
-
-function mod.setup(plugin, deps)
-  M_ref = plugin
-  helpers = deps.helpers
-end
 
 local function ensure_dir()
   -- See state.lua: os.execute() flashes a console window on Windows.

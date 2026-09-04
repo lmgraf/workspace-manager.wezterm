@@ -18,7 +18,7 @@ describe("workspace state saving", function()
     create_directory = spy.new(function() end)
 
     package.loaded.wezterm = fake_wezterm.new({ mux = {} }).wezterm
-    package.loaded["session.workspace_state"] = {
+    package.loaded["workspace_manager.session.workspace_state"] = {
       get_workspace_state_for = function(name)
         if state_error then error(state_error) end
         return state_value
@@ -28,21 +28,25 @@ describe("workspace state saving", function()
           }
       end,
     }
-    package.loaded["session.tab_state"] = {}
-    package.loaded["session.file_io"] = { write_state = write_state }
-
-    state = require("state")
-    state.setup({
+    package.loaded["workspace_manager.session.tab_state"] = {}
+    package.loaded["workspace_manager.session.file_io"] = {
+      write_state = write_state,
+    }
+    package.loaded["workspace_manager.settings"] = {
       session_state_dir = "/tmp/workspace-manager-test",
       session_exclude_workspaces = { "excluded" },
-    }, {
-      helpers = {
-        path_sep = "/",
-        normalize_workspace_name = function(name) return name end,
-        create_directory = create_directory,
-      },
-      history = { HISTORY_DIR = "/tmp", load = function() return {} end },
-    })
+    }
+    package.loaded["workspace_manager.helpers"] = {
+      path_sep = "/",
+      normalize_workspace_name = function(name) return name end,
+      create_directory = create_directory,
+    }
+    package.loaded["workspace_manager.history"] = {
+      HISTORY_DIR = "/tmp",
+      load = function() return {} end,
+    }
+
+    state = require("workspace_manager.state")
   end)
 
   after_each(modules.reset)

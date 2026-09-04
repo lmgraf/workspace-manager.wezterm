@@ -29,8 +29,8 @@ describe("deferred pane restoration", function()
       log_warn = function(message) table.insert(warnings, message) end,
       log_error = function(message) error(message) end,
     }).wezterm
-    package.loaded["session.pane_tree"] = {}
-    tab_state = require("session.tab_state")
+    package.loaded["workspace_manager.session.pane_tree"] = {}
+    tab_state = require("workspace_manager.session.tab_state")
 
     screen, cols, rows = "", 80, 12
     pane = {
@@ -96,7 +96,7 @@ describe("deferred pane restoration", function()
   it("defers callbacks until the complete layout exists", function()
     local layout_ready = false
     local called_during_layout = false
-    package.loaded["session.workspace_state"] = {
+    package.loaded["workspace_manager.session.workspace_state"] = {
       restore_workspace = function(_, opts)
         layout_ready = false
         opts.on_pane_restore(tree)
@@ -104,18 +104,20 @@ describe("deferred pane restoration", function()
         layout_ready = true
       end,
     }
-    package.loaded["session.file_io"] = {
+    package.loaded["workspace_manager.session.file_io"] = {
       load_json = function() return { window_states = {} } end,
     }
-    local state = require("state")
-    state.setup({
+    package.loaded["workspace_manager.settings"] = {
       session_state_dir = ".",
       session_exclude_workspaces = {},
       session_on_pane_restore = function()
         restored = restored + 1
         called_during_layout = not layout_ready
       end,
-    }, { helpers = { path_sep = "/" }, history = {} })
+    }
+    package.loaded["workspace_manager.helpers"] = { path_sep = "/" }
+    package.loaded["workspace_manager.history"] = {}
+    local state = require("workspace_manager.state")
 
     screen = "LIVE> "
     state.restore_workspace_state("test", {}, { defer_pane_restore = true })
@@ -130,25 +132,27 @@ describe("deferred pane restoration", function()
   it("retains immediate restore timing for switcher restores", function()
     local layout_ready = false
     local called_during_layout = false
-    package.loaded["session.workspace_state"] = {
+    package.loaded["workspace_manager.session.workspace_state"] = {
       restore_workspace = function(_, opts)
         layout_ready = false
         opts.on_pane_restore(tree)
         layout_ready = true
       end,
     }
-    package.loaded["session.file_io"] = {
+    package.loaded["workspace_manager.session.file_io"] = {
       load_json = function() return { window_states = {} } end,
     }
-    local state = require("state")
-    state.setup({
+    package.loaded["workspace_manager.settings"] = {
       session_state_dir = ".",
       session_exclude_workspaces = {},
       session_on_pane_restore = function()
         restored = restored + 1
         called_during_layout = not layout_ready
       end,
-    }, { helpers = { path_sep = "/" }, history = {} })
+    }
+    package.loaded["workspace_manager.helpers"] = { path_sep = "/" }
+    package.loaded["workspace_manager.history"] = {}
+    local state = require("workspace_manager.state")
 
     state.restore_workspace_state("test", {})
 

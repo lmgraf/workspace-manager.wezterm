@@ -1,7 +1,6 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
-
-local M_ref -- reference to plugin config table (set via setup)
+local settings = require("workspace_manager.settings")
 
 local mod = {}
 
@@ -9,18 +8,16 @@ local mod = {}
 mod.is_windows = wezterm.target_triple:find("windows") ~= nil
 mod.path_sep = mod.is_windows and "\\" or "/"
 
-function mod.setup(plugin) M_ref = plugin end
-
 function mod.notify(window, title, message, timeout)
-  if not M_ref.notifications_enabled then return end
+  if not settings.notifications_enabled then return end
   pcall(
     function() window:toast_notification(title, message, nil, timeout or 2000) end
   )
 end
 
 function mod.get_wezterm_path()
-  if M_ref.wezterm_path then
-    return M_ref.wezterm_path -- User override
+  if settings.wezterm_path then
+    return settings.wezterm_path -- User override
   end
 
   local exe_dir = wezterm.executable_dir
@@ -46,7 +43,7 @@ end
 function mod.get_workspace_name_and_path(raw_path)
   local normalized, expanded = mod.normalize_workspace_name(raw_path)
 
-  if not M_ref.use_basename_for_workspace_names then
+  if not settings.use_basename_for_workspace_names then
     return normalized, expanded
   end
 

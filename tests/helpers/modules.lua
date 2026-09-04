@@ -1,22 +1,8 @@
 local M = {}
 
-local plugin_modules = {
-  "actions",
-  "config",
-  "data",
-  "helpers",
-  "history",
-  "init",
-  "state",
-  "theme",
-}
-
 function M.reset()
-  for _, name in ipairs(plugin_modules) do
-    package.loaded[name] = nil
-  end
   for name in pairs(package.loaded) do
-    if name:match("^session%.") then package.loaded[name] = nil end
+    if name:match("^workspace_manager%.") then package.loaded[name] = nil end
   end
   package.loaded.wezterm = nil
 end

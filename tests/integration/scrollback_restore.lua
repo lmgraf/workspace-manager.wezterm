@@ -4,8 +4,9 @@ local wezterm = require("wezterm")
 local root = wezterm.config_dir .. "/../.."
 package.path = root .. "/plugin/?.lua;" .. package.path
 
-local tab_state = require("session.tab_state")
-local theme = require("theme")
+local tab_state = require("workspace_manager.session.tab_state")
+local settings = require("workspace_manager.settings")
+local theme = require("workspace_manager.theme")
 local use_profile = os.getenv("SCROLLBACK_TEST_PROFILE") == "1"
 local results = {}
 local assertions = 0
@@ -59,13 +60,11 @@ run_case("formats switcher labels with real WezTerm APIs", function()
   check(wezterm.column_width("●") == 1, "status icon must occupy one column")
   check(wezterm.column_width("界") == 2, "wide icon must occupy two columns")
 
-  theme.setup({
-    workspace_status_format = "icons",
-    workspace_icon = "界  ",
-    workspace_icon_current = "●",
-    workspace_icon_saved = "◇",
-    entry_icon = "",
-  })
+  settings.workspace_status_format = "icons"
+  settings.workspace_icon = "界  "
+  settings.workspace_icon_current = "●"
+  settings.workspace_icon_saved = "◇"
+  settings.entry_icon = ""
   local escaped =
     theme.build_switcher_label("界  ", "workspace", " (2t 3p)", "workspace")
   check(escaped:find("界", 1, true), "formatted label lost its icon")

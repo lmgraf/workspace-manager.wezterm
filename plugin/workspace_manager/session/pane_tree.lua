@@ -1,5 +1,5 @@
 local wezterm = require("wezterm") --[[@as Wezterm]] --- this type cast invokes the LSP module for Wezterm
-local utils = require("session.utils")
+local utils = require("workspace_manager.session.utils")
 
 ---@class pane_tree_module
 ---@field max_nlines integer

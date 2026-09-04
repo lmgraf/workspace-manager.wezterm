@@ -1,17 +1,10 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
-
-local M_ref -- reference to plugin config table (set via setup)
-local helpers -- set via setup
-local state -- set via setup
+local settings = require("workspace_manager.settings")
+local helpers = require("workspace_manager.helpers")
+local state = require("workspace_manager.state")
 
 local mod = {}
-
-function mod.setup(plugin, deps)
-  M_ref = plugin
-  helpers = deps.helpers
-  state = deps.state
-end
 
 function mod.get_workspace_choices()
   local choices = {}
@@ -31,7 +24,7 @@ function mod.get_workspace_choices()
   end
 
   -- Saved (on-disk only) workspaces, when session is enabled
-  if M_ref.session_enabled then
+  if settings.session_enabled then
     for _, ws_name in ipairs(state.get_saved_workspace_names()) do
       local normalized = helpers.normalize_workspace_name(ws_name)
       table.insert(choices, {
@@ -89,7 +82,7 @@ end
 function mod.get_zoxide_paths(limit)
   local paths = {}
   local success, stdout, _ = wezterm.run_child_process({
-    M_ref.zoxide_path,
+    settings.zoxide_path,
     "query",
     "-l",
   })
@@ -107,7 +100,7 @@ end
 function mod.get_zoxide_choices(workspace_normalized_set)
   local choices = {}
   local success, stdout, _ = wezterm.run_child_process({
-    M_ref.zoxide_path,
+    settings.zoxide_path,
     "query",
     "-l",
   })
@@ -132,10 +125,10 @@ function mod.get_zoxide_choices(workspace_normalized_set)
 end
 
 function mod.get_custom_choices(workspace_normalized_set)
-  if M_ref.get_choices == false then return {}, false, {} end
+  if settings.get_choices == false then return {}, false, {} end
 
-  if type(M_ref.get_choices) == "function" then
-    local raw = M_ref.get_choices() or {}
+  if type(settings.get_choices) == "function" then
+    local raw = settings.get_choices() or {}
     local choices = {}
     local label_overrides = {} -- name -> custom label (applied to live workspace entries too)
     for _, entry in ipairs(raw) do

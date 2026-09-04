@@ -20,14 +20,8 @@ function M.new()
   fake.mux = { get_active_workspace = function() return ctx.current end }
   package.loaded.wezterm = fake
 
-  local history = require("history")
-  history.update_access_time = function() end
-  local actions = require("actions")
-  local config = require("config")
   local settings = { session_enabled = false }
   local deps = {
-    history = history,
-    actions = actions,
     theme = {
       fg = function() return {} end,
       get_color = function() return "" end,
@@ -78,8 +72,16 @@ function M.new()
       end,
     },
   }
-  actions.setup(settings, deps)
-  config.setup(settings, deps)
+  package.loaded["workspace_manager.settings"] = settings
+  package.loaded["workspace_manager.theme"] = deps.theme
+  package.loaded["workspace_manager.helpers"] = deps.helpers
+  package.loaded["workspace_manager.data"] = deps.data
+  package.loaded["workspace_manager.state"] = deps.state
+
+  local history = require("workspace_manager.history")
+  history.update_access_time = function() end
+  local actions = require("workspace_manager.actions")
+  local config = require("workspace_manager.config")
   config.apply_to_config({})
 
   local window = {

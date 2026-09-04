@@ -186,11 +186,14 @@ function M.new()
     fake.GLOBAL = { workspace_access_times = { A = 1, B = 2, Saved = 3 } }
     self.settings = { session_enabled = true, zoxide_path = "zoxide" }
     package.loaded.wezterm = fake
-    deps.theme = require("theme")
-    deps.theme.setup(self.settings)
-    deps.data.format_counts = require("data").format_counts
-    self.actions = require("actions")
-    self.actions.setup(self.settings, deps)
+    package.loaded["workspace_manager.settings"] = self.settings
+    package.loaded["workspace_manager.helpers"] = deps.helpers
+    package.loaded["workspace_manager.history"] = deps.history
+    package.loaded["workspace_manager.state"] = deps.state
+    deps.theme = require("workspace_manager.theme")
+    deps.data.format_counts = require("workspace_manager.data").format_counts
+    package.loaded["workspace_manager.data"] = deps.data
+    self.actions = require("workspace_manager.actions")
   end
 
   function ctx:open() self.actions.workspace_switcher()(window, pane) end

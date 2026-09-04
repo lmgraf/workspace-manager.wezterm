@@ -1,9 +1,8 @@
 local wezterm = require("wezterm")
 local mux = wezterm.mux
-
-local M_ref -- reference to plugin config table (set via setup)
-local helpers -- set via setup
-local history -- set via setup
+local settings = require("workspace_manager.settings")
+local helpers = require("workspace_manager.helpers")
+local history = require("workspace_manager.history")
 
 local mod = {}
 
@@ -12,23 +11,18 @@ local _workspace_state_mod = nil
 local _tab_state_mod = nil
 local _file_io_mod = nil
 
-function mod.setup(plugin, deps)
-  M_ref = plugin
-  helpers = deps.helpers
-  history = deps.history
-end
-
 local function get_session_modules()
   if not _workspace_state_mod then
-    _workspace_state_mod = require("session.workspace_state")
-    _tab_state_mod = require("session.tab_state")
-    _file_io_mod = require("session.file_io")
+    _workspace_state_mod =
+      require("workspace_manager.session.workspace_state")
+    _tab_state_mod = require("workspace_manager.session.tab_state")
+    _file_io_mod = require("workspace_manager.session.file_io")
   end
   return _workspace_state_mod, _tab_state_mod, _file_io_mod
 end
 
 function mod.get_state_dir()
-  if M_ref.session_state_dir then return M_ref.session_state_dir end
+  if settings.session_state_dir then return settings.session_state_dir end
   return history.HISTORY_DIR .. "/workspace_state"
 end
 
@@ -41,7 +35,7 @@ end
 
 function mod.is_excluded_workspace(name)
   local normalized = helpers.normalize_workspace_name(name)
-  for _, excluded in ipairs(M_ref.session_exclude_workspaces) do
+  for _, excluded in ipairs(settings.session_exclude_workspaces) do
     if normalized == excluded or name == excluded then return true end
   end
   return false
@@ -177,7 +171,7 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
   local workspace_state_mod, tab_state_mod, _ = get_session_modules()
   local state = mod.load_workspace_state(workspace_name)
   if state then
-    local on_pane_restore = M_ref.session_on_pane_restore
+    local on_pane_restore = settings.session_on_pane_restore
       or tab_state_mod.default_on_pane_restore
     local opts = {
       window = mux_window,

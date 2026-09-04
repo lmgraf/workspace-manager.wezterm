@@ -1,6 +1,5 @@
 local wezterm = require("wezterm")
-
-local M_ref -- reference to plugin config table (set via setup)
+local settings = require("workspace_manager.settings")
 
 local mod = {}
 
@@ -13,10 +12,8 @@ local DEFAULT_COLORS = {
   workspace_status_saved = "Purple",
 }
 
-function mod.setup(plugin) M_ref = plugin end
-
 function mod.get_color(key)
-  if M_ref.colors and M_ref.colors[key] ~= nil then return M_ref.colors[key] end
+  if settings.colors and settings.colors[key] ~= nil then return settings.colors[key] end
   return DEFAULT_COLORS[key]
 end
 
@@ -84,10 +81,10 @@ end
 local function trim_icon(icon) return icon:match("^%s*(.-)%s*$") end
 
 local function icon_column_width()
-  local workspace = M_ref.workspace_icon or "●"
-  local current = M_ref.workspace_icon_current or workspace
-  local saved = M_ref.workspace_icon_saved or "○"
-  local entry = M_ref.entry_icon or "·"
+  local workspace = settings.workspace_icon or "●"
+  local current = settings.workspace_icon_current or workspace
+  local saved = settings.workspace_icon_saved or "○"
+  local entry = settings.entry_icon or "·"
   return math.max(
     wezterm.column_width(trim_icon(workspace)),
     wezterm.column_width(trim_icon(current)),
@@ -98,7 +95,7 @@ end
 
 local function status_style(status, category, format)
   local key = "workspace_status_" .. status
-  local override = M_ref.colors and M_ref.colors[key]
+  local override = settings.colors and settings.colors[key]
   if override ~= nil then return override end
   if format == "icons" then
     local icon_style = resolve_label_color("icon", category)
@@ -112,7 +109,7 @@ end
 -- category: "workspace" (live) | "saved" | "current" | "entry" (suggestion)
 function mod.build_switcher_label(icon, name, counts, category)
   local items = {}
-  local format = M_ref.workspace_status_format or "icons"
+  local format = settings.workspace_status_format or "icons"
   assert(
     format == "icons" or format == "words",
     'workspace_status_format must be "icons" or "words"'
