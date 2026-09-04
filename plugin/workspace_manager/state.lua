@@ -30,8 +30,7 @@ local _file_io_mod = nil
 ---@return table file_io_module
 local function get_session_modules()
   if not _workspace_state_mod then
-    _workspace_state_mod =
-      require("workspace_manager.session.workspace_state")
+    _workspace_state_mod = require("workspace_manager.session.workspace_state")
     _tab_state_mod = require("workspace_manager.session.tab_state")
     _file_io_mod = require("workspace_manager.session.file_io")
   end

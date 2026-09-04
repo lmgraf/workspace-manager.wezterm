@@ -218,10 +218,7 @@ describe("workspace switcher", function()
     }
 
     ctx:open()
-    assert.are.equal(
-      "Current label | Esc=cancel",
-      ctx.selector.description
-    )
+    assert.are.equal("Current label | Esc=cancel", ctx.selector.description)
     assert_flat_format_items(ctx.formatted[ctx.selector.description])
     assert_flat_format_items(ctx.formatted[ctx.selector.fuzzy_description])
 
@@ -234,10 +231,7 @@ describe("workspace switcher", function()
     assert_flat_format_items(ctx.formatted[legend])
 
     ctx:choose("B", "rename")
-    assert.are.equal(
-      "Renaming: B | Enter new name:",
-      ctx.prompt.description
-    )
+    assert.are.equal("Renaming: B | Enter new name:", ctx.prompt.description)
     assert_flat_format_items(ctx.formatted[ctx.prompt.description])
 
     ctx.directory_exists = false

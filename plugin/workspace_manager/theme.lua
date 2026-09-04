@@ -107,9 +107,7 @@ function mod.build_format_items(segments)
   end
   for index = 1, last_index do
     local segment = segments[index]
-    if segment then
-      mod.append_segment(items, segment.text, segment.style)
-    end
+    if segment then mod.append_segment(items, segment.text, segment.style) end
   end
   table.insert(items, "ResetAttributes")
   return items
