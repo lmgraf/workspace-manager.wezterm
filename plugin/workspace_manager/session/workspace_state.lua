@@ -3,9 +3,13 @@ local window_state_mod = require("workspace_manager.session.window_state")
 
 local pub = {}
 
----restore workspace state
----@param workspace_state workspace_state
----@param opts? restore_opts
+---@class WorkspaceManagerWorkspaceState
+---@field workspace string
+---@field window_states WorkspaceManagerWindowState[]
+
+---Restores a workspace from saved state.
+---@param workspace_state WorkspaceManagerWorkspaceState
+---@param opts? WorkspaceManagerRestoreOptions
 function pub.restore_workspace(workspace_state, opts)
   if workspace_state == nil then return end
 
@@ -60,15 +64,15 @@ function pub.restore_workspace(workspace_state, opts)
   end
 end
 
----Returns the state of the currently active workspace
----@return workspace_state
+---Captures the state of the currently active workspace.
+---@return WorkspaceManagerWorkspaceState
 function pub.get_workspace_state()
   return pub.get_workspace_state_for(wezterm.mux.get_active_workspace())
 end
 
----Returns the state of a specific workspace by name
+---Captures the state of a workspace by name.
 ---@param workspace_name string
----@return workspace_state
+---@return WorkspaceManagerWorkspaceState
 function pub.get_workspace_state_for(workspace_name)
   local workspace_state = {
     workspace = workspace_name,

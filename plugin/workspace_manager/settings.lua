@@ -1,74 +1,139 @@
+---@alias WorkspaceManagerCountFormat "compact"|"full"
+---@alias WorkspaceManagerSortOrder "recency"|"alphabetical"
+---@alias WorkspaceManagerStatusFormat "icons"|"words"
+---@alias WorkspaceManagerSwitcherAction "delete"|"unload"|"new"|"new_at_path"|"rename"
+---@alias WorkspaceManagerThemeStyle string|FormatItem[]
+
+---@class WorkspaceManagerCustomChoiceInput
+---@field name string Workspace name and default display label.
+---@field path? string Initial working directory; defaults to the home directory.
+---@field label? string Display label used instead of `name`.
+
+---@alias WorkspaceManagerChoiceInput string|WorkspaceManagerCustomChoiceInput
+---@alias WorkspaceManagerChoiceProvider fun(): WorkspaceManagerChoiceInput[]
+
+---@class WorkspaceManagerWorkspaceChoice
+---@field id string Raw workspace name.
+---@field label string Unformatted display label.
+---@field normalized string Home-relative normalized name.
+---@field is_workspace true
+---@field is_saved boolean Whether the workspace exists only on disk.
+---@field access_time integer Last access timestamp, or zero when unknown.
+
+---@class WorkspaceManagerCycleChoice
+---@field id string Raw workspace name.
+---@field label string Unformatted display label.
+---@field normalized string Home-relative normalized name.
+---@field is_saved false
+
+---@class WorkspaceManagerSuggestionChoice
+---@field id string Workspace name or source path.
+---@field label string Unformatted display label.
+---@field normalized string Home-relative normalized name or path.
+---@field is_workspace false
+---@field name? string Explicit workspace name from a custom provider.
+---@field path? string Initial working directory from a custom provider.
+---@field has_path? boolean Whether a custom provider supplied `path`.
+
+---@alias WorkspaceManagerFilterChoice WorkspaceManagerWorkspaceChoice|WorkspaceManagerSuggestionChoice
+---@alias WorkspaceManagerChoiceFilter fun(choice: WorkspaceManagerFilterChoice): boolean
+
+---@class WorkspaceManagerKeyBinding
+---@field key string Key identifier accepted by WezTerm.
+---@field mods? string Modifier expression; defaults to `NONE`.
+---@field hint? string Short label shown in switcher help text.
+
+---@class WorkspaceManagerSwitcherKeys
+---@field delete? WorkspaceManagerKeyBinding|false Defaults to Ctrl+D; `false` disables it.
+---@field unload? WorkspaceManagerKeyBinding|false Defaults to Ctrl+U; `false` disables it.
+---@field new? WorkspaceManagerKeyBinding|false Defaults to Ctrl+N; `false` disables it.
+---@field new_at_path? WorkspaceManagerKeyBinding|false Defaults to Ctrl+P; `false` disables it.
+---@field rename? WorkspaceManagerKeyBinding|false Defaults to Ctrl+R; `false` disables it.
+
+---@class WorkspaceManagerColors
+---@field prompt_accent? WorkspaceManagerThemeStyle Workspace/path accents. Defaults to ANSI Lime.
+---@field prompt_heading? WorkspaceManagerThemeStyle Prompt labels. Defaults to bold intensity.
+---@field muted? WorkspaceManagerThemeStyle Secondary text. Defaults to ANSI Grey.
+---@field workspace_status_live? WorkspaceManagerThemeStyle Live prefix. Defaults to ANSI Green.
+---@field workspace_status_saved? WorkspaceManagerThemeStyle Saved prefix. Defaults to ANSI Purple.
+---@field workspace_status_path? WorkspaceManagerThemeStyle Suggestion prefix. Defaults to the terminal foreground.
+---@field workspace_icon? WorkspaceManagerThemeStyle Non-active workspace icon style.
+---@field workspace_name? WorkspaceManagerThemeStyle Non-active workspace name style.
+---@field workspace_counts? WorkspaceManagerThemeStyle Non-active workspace count style.
+---@field workspace_icon_current? WorkspaceManagerThemeStyle Active icon style; falls back to `workspace_icon`.
+---@field workspace_name_current? WorkspaceManagerThemeStyle Active name style; falls back to `workspace_name`.
+---@field workspace_counts_current? WorkspaceManagerThemeStyle Active count style; falls back to `workspace_counts`.
+---@field workspace_current_marker? WorkspaceManagerThemeStyle Current marker style; falls back to `prompt_accent`.
+---@field entry_icon? WorkspaceManagerThemeStyle Suggestion icon style; falls back to `workspace_icon`.
+---@field entry_name? WorkspaceManagerThemeStyle Suggestion name style; falls back to `workspace_name`.
+
+---@class WorkspaceManager
+---@field zoxide_path string Path to the zoxide binary. Defaults to `zoxide`.
+---@field get_choices? WorkspaceManagerChoiceProvider|false Custom suggestions; defaults to built-in zoxide, while `false` disables suggestions.
+---@field filter_choices? string[]|WorkspaceManagerChoiceFilter Path allowlist for suggestions or predicate for every choice; defaults to no filtering.
+---@field wezterm_path? string WezTerm executable override; defaults to automatic detection.
+---@field show_current_workspace_in_switcher boolean Whether the active workspace appears in the switcher. Defaults to `false`.
+---@field show_current_workspace_hint boolean Whether descriptions include the active workspace. Defaults to `true`.
+---@field start_in_fuzzy_mode boolean Whether the switcher initially uses fuzzy search. Defaults to `true`.
+---@field notifications_enabled boolean Whether actions show toast notifications. Defaults to `false`.
+---@field workspace_count_format? WorkspaceManagerCountFormat Count display format; defaults to `compact`, while `nil` disables counts.
+---@field use_basename_for_workspace_names boolean Whether paths use their basename as the workspace name. Defaults to `false`.
+---@field workspace_switcher_sort WorkspaceManagerSortOrder Workspace ordering strategy. Defaults to `recency`.
+---@field switcher_keys? WorkspaceManagerSwitcherKeys In-switcher action overrides. Defaults to the built-in bindings.
+---@field show_switcher_hints boolean Whether descriptions include action hints. Defaults to `true`.
+---@field workspace_status_format WorkspaceManagerStatusFormat Status prefix format. Defaults to `icons`.
+---@field workspace_icon? string Live-workspace status glyph. Defaults to `●`.
+---@field workspace_icon_current? string Active-workspace status glyph. Defaults to `workspace_icon`.
+---@field workspace_icon_saved? string Saved-workspace status glyph. Defaults to `○`.
+---@field entry_icon? string Suggested-entry status glyph. Defaults to `·`.
+---@field colors? WorkspaceManagerColors Theme style overrides. Defaults to the built-in palette.
+---@field session_enabled boolean Whether session persistence is enabled. Defaults to `false`.
+---@field session_periodic_save_interval? number Seconds between periodic saves; defaults to 600, while `nil` disables them.
+---@field session_periodic_save_all boolean Whether periodic saves include every live workspace. Defaults to `false`.
+---@field session_max_scrollback_lines integer Maximum scrollback lines saved per pane. Defaults to 3500.
+---@field session_exclude_workspaces string[] Workspace names excluded from persistence. Defaults to `{ "default" }`.
+---@field session_state_dir? string Directory containing saved workspace state. Defaults beneath WezTerm's data directory.
+---@field session_on_pane_restore? fun(pane_tree: WorkspaceManagerPaneTree) Custom pane restoration callback. Defaults to scrollback restoration.
+---@field session_restore_on_startup boolean Whether the newest saved workspace is restored at startup. Defaults to `false`.
+---@field workspace_switcher fun(): KeyAssignment
+---@field switch_to_previous_workspace fun(): KeyAssignment
+---@field next_workspace fun(): KeyAssignment
+---@field previous_workspace fun(): KeyAssignment
+---@field save_workspace fun(): KeyAssignment
+---@field apply_to_config fun(config: Config)
+---@field get_switcher_legend fun(): string
+---@field get_zoxide_paths fun(limit?: integer): string[]
+
+---@type WorkspaceManager
 local M = {}
 
--- Configuration
 M.zoxide_path = "zoxide"
-M.get_choices = nil -- Custom entry provider function. Replaces zoxide when set.
--- Return a list of path strings or tables:
---   { name = "ws-name", path = "~/optional/cwd", label = "Optional Display" }
--- Set to false to disable extra entries entirely.
-M.filter_choices = nil -- Filter switcher entries. Accepts a table (path allowlist) or a function (predicate).
--- Table: list of exact path strings; only matching custom/zoxide entries are kept.
---   Workspaces (live + saved) always pass through.
--- Function: function(choice) -> bool; return true to keep the entry.
---   Choice fields — workspace: id, label, normalized, is_workspace (true), is_saved, access_time
---                   custom:    id, label, normalized, is_workspace (false), name, path, has_path
-M.wezterm_path = nil -- Optional: auto-detected from wezterm.executable_dir (only needed if auto-detection fails)
-M.show_current_workspace_in_switcher = false -- Show current workspace in the switcher list
-M.show_current_workspace_hint = true -- Show current workspace name in the switcher description
-M.start_in_fuzzy_mode = true -- Start switcher in fuzzy search mode (false = use positional shortcuts)
-M.notifications_enabled = false -- Enable toast notifications (requires code-signed wezterm on macOS)
-M.workspace_count_format = "compact" -- nil (disabled), "compact" (2w 3t 5p), or "full" (2 wins, 3 tabs, 5 panes)
-M.use_basename_for_workspace_names = false -- Use basename only (default: false for backward compatibility)
-M.workspace_switcher_sort = "recency" -- "recency" (most recently used first, default) or "alphabetical" (sorted alphabetically)
-M.switcher_keys = nil -- Override in-switcher action key bindings. Table mapping action name to { key, mods }.
--- Actions: "delete", "unload", "new", "new_at_path", "rename"
--- Set an action to false to disable it. Unspecified actions use defaults.
--- e.g. { unload = { key = "x", mods = "CTRL" }, rename = false }
-M.show_switcher_hints = true -- Show action key hints in the switcher description bar (both fuzzy and non-fuzzy modes).
--- Set to false to hide hints from the description (use get_switcher_legend() instead).
-M.workspace_status_format = "icons" -- "icons" (● / ○ / ·) or "words" ([live] / [disk] / [path])
-M.workspace_icon = nil -- Live workspace status icon (default: "●")
-M.workspace_icon_current = nil -- Icon glyph for the active workspace (default: falls back to workspace_icon)
-M.workspace_icon_saved = nil -- Saved workspace status icon (default: "○")
-M.entry_icon = nil -- Status icon for custom/zoxide entries (default: "·")
-M.colors = nil -- Override theme colors.
--- All keys accept a color string (AnsiColor name or "#hex") as a foreground color,
--- or a FormatItem list for full control over fg, bg, intensity, etc.
--- e.g. { { Foreground = { Color = "#cdd6f4" } }, { Attribute = { Intensity = "Bold" } } }
---
---   Prompt styling:
---   prompt_accent:  workspace name/path text in descriptions, e.g. "~/ws" in the switcher and "Renaming: ~/ws" (default: "Lime")
---   prompt_heading: label text in prompts, e.g. "Renaming:", "Directory does not exist:" (default: Bold)
---   muted:          secondary text like the switcher legend and shortcut hints (default: ANSI Grey)
---
---   Non-active workspace entries:
---   workspace_icon:   icon color override in icons mode (default: nil)
---   workspace_name:   workspace name (default: nil = terminal default)
---   workspace_counts: count suffix, e.g. "(2w 3t 5p)" (default: nil = terminal default)
---
---   Status colors apply only to the icon or word prefix in both formats.
---   workspace_status_live:  ● or [live] (default: scheme's ANSI Green)
---   workspace_status_saved: ○ or [disk] (default: scheme's ANSI Purple/magenta)
---   workspace_status_path:  · or [path] (default: terminal foreground)
---
---   Active (current) workspace — falls back to workspace_*:
---   workspace_icon_current:   icon glyph
---   workspace_name_current:   workspace name
---   workspace_counts_current: count suffix
---   workspace_current_marker: "current" text after the name (falls back to prompt_accent)
---
---   Custom/zoxide entries — falls back to workspace_*:
---   entry_icon: icon glyph
---   entry_name: entry name
+M.get_choices = nil
+M.filter_choices = nil
+M.wezterm_path = nil
+M.show_current_workspace_in_switcher = false
+M.show_current_workspace_hint = true
+M.start_in_fuzzy_mode = true
+M.notifications_enabled = false
+M.workspace_count_format = "compact"
+M.use_basename_for_workspace_names = false
+M.workspace_switcher_sort = "recency"
+M.switcher_keys = nil
+M.show_switcher_hints = true
+M.workspace_status_format = "icons"
+M.workspace_icon = nil
+M.workspace_icon_current = nil
+M.workspace_icon_saved = nil
+M.entry_icon = nil
+M.colors = nil
 
--- Session persistence (session integration)
-M.session_enabled = false -- Enable automatic workspace state save/restore
-M.session_periodic_save_interval = 600 -- Seconds between periodic saves (nil to disable)
-M.session_periodic_save_all = false -- Periodic save: true=all in-memory workspaces, false=active workspace only
-M.session_max_scrollback_lines = 3500 -- Max scrollback lines to capture per pane
-M.session_exclude_workspaces = { "default" } -- Workspace names to never save/restore
-M.session_state_dir = nil -- Override state directory (default: ~/.local/share/wezterm/workspace_state/)
-M.session_on_pane_restore = nil -- Custom per-pane restore callback (default: default_on_pane_restore)
-M.session_restore_on_startup = false -- Restore most recently used workspace on gui-startup
+M.session_enabled = false
+M.session_periodic_save_interval = 600
+M.session_periodic_save_all = false
+M.session_max_scrollback_lines = 3500
+M.session_exclude_workspaces = { "default" }
+M.session_state_dir = nil
+M.session_on_pane_restore = nil
+M.session_restore_on_startup = false
 
 return M

@@ -1,7 +1,11 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 
 -- A direct development load can specify its module directory so an installed
 -- clone cannot take precedence over the checkout being edited.
+---@class WorkspaceManagerLoadOptions
+---@field plugin_dir? string Module directory for a directly loaded checkout.
+
+---@type WorkspaceManagerLoadOptions?
 local load_options = ...
 local plugin_dir = type(load_options) == "table" and load_options.plugin_dir
 if not plugin_dir then
@@ -14,6 +18,7 @@ if not plugin_dir then
 end
 if plugin_dir then package.path = plugin_dir .. "/?.lua;" .. package.path end
 
+---@type WorkspaceManager
 local M = require("workspace_manager.settings")
 local actions = require("workspace_manager.actions")
 local config_mod = require("workspace_manager.config")

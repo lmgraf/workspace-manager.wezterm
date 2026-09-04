@@ -1,8 +1,9 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local settings = require("workspace_manager.settings")
 
 local mod = {}
 
+---@type table<string, WorkspaceManagerThemeStyle>
 local DEFAULT_COLORS = {
   prompt_accent = "Lime",
   prompt_heading = { { Attribute = { Intensity = "Bold" } } },
@@ -12,12 +13,17 @@ local DEFAULT_COLORS = {
   workspace_status_saved = "Purple",
 }
 
+---Returns a configured theme style or its default.
+---@param key string
+---@return WorkspaceManagerThemeStyle?
 function mod.get_color(key)
   if settings.colors and settings.colors[key] ~= nil then return settings.colors[key] end
   return DEFAULT_COLORS[key]
 end
 
--- Converts a color string (AnsiColor name or "#hex") to a Foreground FormatItem.
+---Converts an ANSI name or hex color to a foreground format item.
+---@param color_string string
+---@return FormatItem
 function mod.fg(color_string)
   if color_string:sub(1, 1) == "#" then
     return { Foreground = { Color = color_string } }
@@ -26,14 +32,18 @@ function mod.fg(color_string)
   end
 end
 
--- Builds a FormatItem list for prompt heading text using the configured prompt_heading style.
+---Builds formatted prompt heading text using the configured style.
+---@param text string
+---@return FormatItem[]
 function mod.build_heading(text)
   local items = {}
   mod.append_segment(items, text, mod.get_color("prompt_heading"))
   return items
 end
 
--- Resolves the first non-nil color from the given keys (in order).
+---Resolves the first configured style from the supplied keys.
+---@param ... string
+---@return WorkspaceManagerThemeStyle?
 local function resolve_color(...)
   for i = 1, select("#", ...) do
     local color = mod.get_color(select(i, ...))
@@ -42,13 +52,12 @@ local function resolve_color(...)
   return nil
 end
 
--- Resolves a label segment color for a given category.
--- category: "workspace" | "saved" | "current" | "entry"
--- Fallback chains:
---   current:   workspace_<seg>_current -> workspace_<seg>
---   entry:     entry_<seg>             -> workspace_<seg>
---   workspace: workspace_<seg>
---   saved:     workspace_<seg>
+---@alias WorkspaceManagerChoiceCategory "workspace"|"saved"|"current"|"entry"
+
+---Resolves a label segment style using category-specific fallbacks.
+---@param segment "icon"|"name"|"counts"
+---@param category WorkspaceManagerChoiceCategory
+---@return WorkspaceManagerThemeStyle?
 local function resolve_label_color(segment, category)
   if category == "current" then
     return resolve_color(
@@ -62,9 +71,10 @@ local function resolve_label_color(segment, category)
   end
 end
 
--- Appends a styled text segment to a FormatItems list. Skips empty strings.
--- style can be nil (no styling), a color string (treated as foreground), or
--- a list of FormatItems (e.g. { { Attribute = { Intensity = "Half" } } }).
+---Appends a styled text segment, skipping empty strings.
+---@param items FormatItem[]
+---@param text string
+---@param style? WorkspaceManagerThemeStyle
 function mod.append_segment(items, text, style)
   if text == "" then return end
   table.insert(items, "ResetAttributes")
@@ -78,8 +88,11 @@ function mod.append_segment(items, text, style)
   table.insert(items, { Text = text })
 end
 
+---@param icon string
+---@return string
 local function trim_icon(icon) return icon:match("^%s*(.-)%s*$") end
 
+---@return integer
 local function icon_column_width()
   local workspace = settings.workspace_icon or "●"
   local current = settings.workspace_icon_current or workspace
@@ -93,6 +106,10 @@ local function icon_column_width()
   )
 end
 
+---@param status "live"|"saved"|"path"
+---@param category WorkspaceManagerChoiceCategory
+---@param format WorkspaceManagerStatusFormat
+---@return WorkspaceManagerThemeStyle?
 local function status_style(status, category, format)
   local key = "workspace_status_" .. status
   local override = settings.colors and settings.colors[key]
@@ -104,9 +121,12 @@ local function status_style(status, category, format)
   return mod.get_color(key)
 end
 
--- Builds a fully formatted switcher label with independently styled segments.
--- Both formats use one aligned status column before the name and counts.
--- category: "workspace" (live) | "saved" | "current" | "entry" (suggestion)
+---Builds a switcher label with an aligned status column and styled segments.
+---@param icon string
+---@param name string
+---@param counts string
+---@param category WorkspaceManagerChoiceCategory
+---@return string
 function mod.build_switcher_label(icon, name, counts, category)
   local items = {}
   local format = settings.workspace_status_format or "icons"

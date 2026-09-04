@@ -1,4 +1,4 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local mux = wezterm.mux
 local settings = require("workspace_manager.settings")
 local helpers = require("workspace_manager.helpers")
@@ -6,11 +6,28 @@ local history = require("workspace_manager.history")
 
 local mod = {}
 
+---@class WorkspaceManagerRestoreOptions
+---@field window? MuxWindow Window that receives the restored state.
+---@field tab? MuxTab Tab reused for the first restored tab.
+---@field pane? Pane Pane reused for the first restored pane.
+---@field relative? boolean Restore split sizes proportionally.
+---@field absolute? boolean Restore split sizes by cell count.
+---@field close_open_tabs? boolean Close tabs not represented by saved state.
+---@field close_open_panes? boolean Close panes not represented by saved state.
+---@field resize_window? boolean Restore the saved window pixel size.
+---@field defer_pane_restore? boolean Wait for new panes before restoring content.
+---@field spawn_in_workspace? boolean Spawn additional windows in the saved workspace.
+---@field on_pane_restore? fun(pane_tree: WorkspaceManagerPaneTree)
+
 -- Lazy-loaded session modules (only required when session_enabled = true)
 local _workspace_state_mod = nil
 local _tab_state_mod = nil
 local _file_io_mod = nil
 
+---Returns the lazily loaded session persistence modules.
+---@return table workspace_state_module
+---@return table tab_state_module
+---@return table file_io_module
 local function get_session_modules()
   if not _workspace_state_mod then
     _workspace_state_mod =
@@ -21,11 +38,14 @@ local function get_session_modules()
   return _workspace_state_mod, _tab_state_mod, _file_io_mod
 end
 
+---Returns the directory containing saved workspace state.
+---@return string
 function mod.get_state_dir()
   if settings.session_state_dir then return settings.session_state_dir end
   return history.HISTORY_DIR .. "/workspace_state"
 end
 
+---Creates the state directory if it does not exist.
 local function ensure_state_dir()
   -- os.execute() goes through the C runtime's system(), which allocates a
   -- visible console for cmd.exe when the caller is a GUI process. That flashed
@@ -33,6 +53,9 @@ local function ensure_state_dir()
   helpers.create_directory(mod.get_state_dir())
 end
 
+---Returns whether a workspace is excluded from session persistence.
+---@param name string
+---@return boolean
 function mod.is_excluded_workspace(name)
   local normalized = helpers.normalize_workspace_name(name)
   for _, excluded in ipairs(settings.session_exclude_workspaces) do
@@ -41,18 +64,25 @@ function mod.is_excluded_workspace(name)
   return false
 end
 
--- Sanitize a workspace name for use as a filename (replace path separators with +)
+---Encodes a workspace name for use as a state filename.
+---@param name string
+---@return string
 local function workspace_name_to_filename(name)
   return name:gsub(helpers.path_sep, "+")
 end
 
--- Reverse filename encoding back to workspace name
+---Decodes a state filename into its workspace name.
+---@param filename string
+---@return string
 local function filename_to_workspace_name(filename)
   -- Remove .json extension, then replace + back to path separator
   local name = filename:gsub("%.json$", "")
   return name:gsub("%+", helpers.path_sep)
 end
 
+---Returns the state-file path for a workspace.
+---@param workspace_name string
+---@return string
 local function get_state_file_path(workspace_name)
   return mod.get_state_dir()
     .. "/"
@@ -60,6 +90,8 @@ local function get_state_file_path(workspace_name)
     .. ".json"
 end
 
+---Returns the newest non-excluded workspace that has saved state.
+---@return string?
 function mod.get_most_recent_saved_workspace()
   local hist = history.load()
   local entries = {}
@@ -79,6 +111,9 @@ function mod.get_most_recent_saved_workspace()
   return nil
 end
 
+---Saves a workspace and optional GUI window dimensions.
+---@param workspace_name string
+---@param gui_win? GuiWindow
 ---@return boolean success
 ---@return string|nil error
 function mod.save_workspace_state(workspace_name, gui_win)
@@ -136,6 +171,9 @@ function mod.save_workspace_state(workspace_name, gui_win)
   return true
 end
 
+---Loads a workspace state file when it contains window state.
+---@param workspace_name string
+---@return WorkspaceManagerWorkspaceState?
 function mod.load_workspace_state(workspace_name)
   local _, _, file_io = get_session_modules()
   local path = get_state_file_path(workspace_name)
@@ -149,6 +187,8 @@ function mod.load_workspace_state(workspace_name)
   return nil
 end
 
+---Deletes a workspace's saved state file when present.
+---@param workspace_name string
 function mod.delete_workspace_state(workspace_name)
   local path = get_state_file_path(workspace_name)
   local ok = os.remove(path)
@@ -161,12 +201,19 @@ function mod.delete_workspace_state(workspace_name)
   end
 end
 
+---Renames a workspace's saved state file.
+---@param old_name string
+---@param new_name string
 function mod.rename_workspace_state(old_name, new_name)
   local old_path = get_state_file_path(old_name)
   local new_path = get_state_file_path(new_name)
   os.rename(old_path, new_path)
 end
 
+---Restores a saved workspace into a mux window.
+---@param workspace_name string
+---@param mux_window MuxWindow
+---@param restore_opts? WorkspaceManagerRestoreOptions
 function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
   local workspace_state_mod, tab_state_mod, _ = get_session_modules()
   local state = mod.load_workspace_state(workspace_name)
@@ -212,6 +259,12 @@ function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
   end
 end
 
+---Waits until window pixel dimensions remain stable or the check limit expires.
+---@param window MuxWindow
+---@param interval_s number
+---@param stable_samples integer
+---@param max_checks integer
+---@param on_ready fun(stable: boolean)
 function mod.wait_for_stable_window(
   window,
   interval_s,
@@ -271,7 +324,8 @@ function mod.wait_for_stable_window(
   sample()
 end
 
--- Returns workspace names that have saved state on disk (excluding excluded and live workspaces)
+---Returns saved workspace names that are neither excluded nor currently live.
+---@return string[]
 function mod.get_saved_workspace_names()
   local state_dir = mod.get_state_dir()
   local names = {}

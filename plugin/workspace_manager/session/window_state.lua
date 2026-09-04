@@ -2,9 +2,24 @@ local wezterm = require("wezterm") --[[@as Wezterm]]
 local tab_state_mod = require("workspace_manager.session.tab_state")
 local pub = {}
 
----Returns the state of the window
+---@class WorkspaceManagerDimensions
+---@field cols integer
+---@field rows integer
+---@field pixel_width integer
+---@field pixel_height integer
+
+---@class WorkspaceManagerWindowState
+---@field title string
+---@field tabs WorkspaceManagerTabState[]
+---@field size WorkspaceManagerDimensions
+---@field window_id? integer
+---@field is_focused? boolean
+---@field window_pixel_width? integer
+---@field window_pixel_height? integer
+
+---Captures the state of a window.
 ---@param window MuxWindow
----@return window_state
+---@return WorkspaceManagerWindowState
 function pub.get_window_state(window)
   local window_state = {
     title = window:get_title(),
@@ -31,7 +46,7 @@ function pub.get_window_state(window)
   return window_state
 end
 
----Force closes all other tabs in the window but one
+---Closes every tab in a window except the selected tab.
 ---@param window MuxWindow
 ---@param tab_to_keep MuxTab
 local function close_all_other_tabs(window, tab_to_keep)
@@ -46,10 +61,10 @@ local function close_all_other_tabs(window, tab_to_keep)
   end
 end
 
----restore window state
+---Restores a window from saved state.
 ---@param window MuxWindow
----@param window_state window_state
----@param opts? restore_opts
+---@param window_state WorkspaceManagerWindowState
+---@param opts? WorkspaceManagerRestoreOptions
 function pub.restore_window(window, window_state, opts)
   if opts == nil then opts = {} end
 

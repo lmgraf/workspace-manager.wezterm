@@ -2,9 +2,19 @@ local wezterm = require("wezterm") --[[@as Wezterm]]
 local pane_tree_mod = require("workspace_manager.session.pane_tree")
 local pub = {}
 
----Function used to split panes when mapping over the pane_tree
----@param opts restore_opts
----@return fun(acc: {active_pane: Pane, is_zoomed: boolean}, pane_tree: pane_tree): {active_pane: Pane, is_zoomed: boolean}
+---@class WorkspaceManagerTabState
+---@field title string
+---@field is_zoomed boolean
+---@field is_active? boolean
+---@field pane_tree WorkspaceManagerPaneTree
+
+---@class WorkspaceManagerPaneRestoreAccumulator
+---@field active_pane? Pane
+---@field is_zoomed boolean
+
+---Builds the fold callback that recreates saved pane splits.
+---@param opts WorkspaceManagerRestoreOptions
+---@return fun(acc: WorkspaceManagerPaneRestoreAccumulator, pane_tree: WorkspaceManagerPaneTree): WorkspaceManagerPaneRestoreAccumulator
 local function make_splits(opts)
   if opts == nil then opts = {} end
 
@@ -49,9 +59,9 @@ local function make_splits(opts)
   end
 end
 
----creates and returns the state of the tab
+---Captures the state of a tab.
 ---@param tab MuxTab
----@return tab_state
+---@return WorkspaceManagerTabState
 function pub.get_tab_state(tab)
   local panes = tab:panes_with_info()
 
@@ -71,7 +81,7 @@ function pub.get_tab_state(tab)
   return tab_state
 end
 
----Force closes all other tabs in the window but one
+---Closes every pane in a tab except the selected pane.
 ---@param tab MuxTab
 ---@param pane_to_keep Pane
 local function close_all_other_panes(tab, pane_to_keep)
@@ -86,10 +96,10 @@ local function close_all_other_panes(tab, pane_to_keep)
   end
 end
 
----restore a tab
+---Restores a tab from saved state.
 ---@param tab MuxTab
----@param tab_state tab_state
----@param opts restore_opts
+---@param tab_state WorkspaceManagerTabState
+---@param opts WorkspaceManagerRestoreOptions
 function pub.restore_tab(tab, tab_state, opts)
   if opts.pane then
     tab_state.pane_tree.pane = opts.pane
@@ -116,9 +126,9 @@ function pub.restore_tab(tab, tab_state, opts)
   if acc.active_pane then acc.active_pane:activate() end
 end
 
----Wait for a newly created pane's geometry and shell output to settle.
----@param pane_tree pane_tree
----@param on_pane_restore function
+---Waits for a newly created pane's geometry and shell output to settle.
+---@param pane_tree WorkspaceManagerPaneTree
+---@param on_pane_restore fun(pane_tree: WorkspaceManagerPaneTree)
 function pub.restore_pane_when_stable(pane_tree, on_pane_restore)
   local previous, stable_count, checks = nil, 0, 0
 
@@ -161,8 +171,8 @@ function pub.restore_pane_when_stable(pane_tree, on_pane_restore)
   wezterm.time.call_after(0.1, sample)
 end
 
----Restore saved scrollback without sending commands to the new shell.
----@param pane_tree pane_tree
+---Restores saved scrollback without sending commands to the new shell.
+---@param pane_tree WorkspaceManagerPaneTree
 function pub.default_on_pane_restore(pane_tree)
   local pane = pane_tree.pane
 

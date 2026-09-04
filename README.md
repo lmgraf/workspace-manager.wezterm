@@ -652,13 +652,13 @@ For more composable recipes (directory scanning, capped zoxide, static + dynamic
 
 ## Filtering Choices
 
-Use `filter_choices` to control which **suggested entries** appear in the switcher. It accepts a **table** (path allowlist) or a **function** (predicate).
+Use `filter_choices` to control which entries appear in the switcher. It accepts a **table** (path allowlist) or a **function** (predicate).
 
-> **Note:** `filter_choices` only affects custom/zoxide suggestions. Workspaces you've created, whether currently running or saved from a previous session, always appear in the switcher regardless of the filter.
+> **Note:** A table allowlist filters only custom/zoxide suggestions. A predicate receives every live, saved, and suggested choice, so it can filter any category.
 
 ### Table allowlist
 
-The simplest form: a list of exact path strings. Only custom/zoxide entries whose `normalized` path exactly matches one of the listed paths are kept.
+The simplest form is a list of exact path strings. The allowlist applies only to custom and zoxide suggestions; live and saved workspaces remain visible. A suggestion is kept when its `normalized` path exactly matches one of the listed paths.
 
 ```lua
 workspace_manager.filter_choices = {
@@ -686,9 +686,9 @@ For more control, provide a function that receives a choice object and returns `
 | `has_path` | n/a | yes | n/a | Whether `path` was explicitly set |
 
 ```lua
--- Only show zoxide suggestions under ~/Code (including subdirectories)
+-- Keep every workspace, and only suggestions below ~/Code
 workspace_manager.filter_choices = function(choice)
-  if choice.is_workspace then return true end  -- workspaces always shown; filter targets suggestions only
+  if choice.is_workspace then return true end
   return choice.normalized:find("^~/Code/") ~= nil
 end
 

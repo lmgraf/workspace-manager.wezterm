@@ -1,7 +1,9 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local helpers = require("workspace_manager.helpers")
 
 local mod = {}
+
+---@alias WorkspaceManagerHistory table<string, integer>
 
 mod.HISTORY_DIR = wezterm.home_dir .. "/.local/share/wezterm"
 mod.HISTORY_FILE = mod.HISTORY_DIR .. "/workspace_history.json"
@@ -11,6 +13,8 @@ local function ensure_dir()
   helpers.create_directory(mod.HISTORY_DIR)
 end
 
+---Loads workspace access timestamps from disk.
+---@return WorkspaceManagerHistory
 function mod.load()
   local file = io.open(mod.HISTORY_FILE, "r")
   if file then
@@ -22,6 +26,8 @@ function mod.load()
   return {}
 end
 
+---Writes workspace access timestamps to disk.
+---@param history WorkspaceManagerHistory
 function mod.save(history)
   ensure_dir()
   local file = io.open(mod.HISTORY_FILE, "w")
@@ -31,7 +37,9 @@ function mod.save(history)
   end
 end
 
--- Track raw workspace ids; display normalization can change their identity.
+---Tracks raw workspace ids because display normalization can change identity.
+---@param old_workspace? string
+---@param new_workspace? string
 function mod.record_workspace_switch(old_workspace, new_workspace)
   if not new_workspace then return end
   if old_workspace and old_workspace ~= new_workspace then
@@ -40,6 +48,8 @@ function mod.record_workspace_switch(old_workspace, new_workspace)
   wezterm.GLOBAL.last_focused_workspace = new_workspace
 end
 
+---Records the current time as a workspace's most recent access.
+---@param workspace_name string
 function mod.update_access_time(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
   wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times

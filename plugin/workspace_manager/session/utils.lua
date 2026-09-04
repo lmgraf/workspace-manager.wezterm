@@ -1,4 +1,4 @@
-local wezterm = require("wezterm") --[[@as Wezterm]] --- this type cast invokes the LSP module for Wezterm
+local wezterm = require("wezterm") --[[@as Wezterm]]
 
 local utils = {}
 
@@ -9,7 +9,7 @@ utils.is_mac = (
 )
 utils.separator = utils.is_windows and "\\" or "/"
 
--- Helper function to remove formatting esc sequences in the string
+---Removes terminal formatting escape sequences from a string.
 ---@param str string
 ---@return string
 function utils.strip_format_esc_seq(str)
@@ -17,7 +17,7 @@ function utils.strip_format_esc_seq(str)
   return clean_str
 end
 
--- getting screen dimensions
+---Returns the focused window width, or a conservative fallback.
 ---@return number
 function utils.get_current_window_width()
   local windows = wezterm.gui.gui_windows()
@@ -27,7 +27,7 @@ function utils.get_current_window_width()
   return 80
 end
 
--- replace the center of a string with another string
+---Replaces the center of a string with another string.
 ---@param str string string to be modified
 ---@param len number length to be removed from the middle of str
 ---@param pad string string that must be inserted in place of the missing part of str
@@ -37,7 +37,7 @@ function utils.replace_center(str, len, pad)
   return str:sub(1, start) .. pad .. str:sub(start + len + 1)
 end
 
--- returns the length of a utf8 string
+---Returns the number of UTF-8 code points in a string.
 ---@param str string
 ---@return number
 function utils.utf8len(str)
@@ -45,7 +45,7 @@ function utils.utf8len(str)
   return len
 end
 
--- Execute a cmd and return its stdout
+---Executes a command and returns its standard output.
 ---@param cmd string command
 ---@return boolean success result
 ---@return string|nil error
@@ -65,7 +65,7 @@ function utils.execute(cmd)
   end
 end
 
--- Create the folder if it does not exist
+---Creates a directory if it does not exist.
 ---@param path string
 function utils.ensure_folder_exists(path)
   -- os.execute() flashes a console window on Windows; run_child_process() does not.
@@ -76,9 +76,10 @@ function utils.ensure_folder_exists(path)
   end
 end
 
--- deep copy
----@param original table
----@return any copy
+---Creates a recursive copy while preserving the input value's type.
+---@generic T
+---@param original T
+---@return T copy
 function utils.deepcopy(original)
   local copy
   if type(original) == "table" then
@@ -92,15 +93,16 @@ function utils.deepcopy(original)
   return copy
 end
 
--- extend table
----@alias behavior
----| 'error' # Raises an error if a kye exists in multiple tables
+---@alias WorkspaceManagerMergeBehavior
+---| 'error' # Raises an error if a key exists in multiple tables
 ---| 'keep'  # Uses the value from the leftmost table (first occurrence)
 ---| 'force' # Uses the value from the rightmost table (last occurrence)
 ---
----@param behavior behavior
----@param ... table
----@return table|nil
+---Recursively merges tables according to the selected conflict behavior.
+---@generic T: table
+---@param behavior WorkspaceManagerMergeBehavior
+---@param ... T
+---@return T
 function utils.tbl_deep_extend(behavior, ...)
   local tables = { ... }
   if #tables == 0 then return {} end

@@ -1,4 +1,4 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local act = wezterm.action
 local mux = wezterm.mux
 local settings = require("workspace_manager.settings")
@@ -10,12 +10,43 @@ local data = require("workspace_manager.data")
 
 local mod = {}
 
+---@class WorkspaceManagerResolvedKeyBinding: WorkspaceManagerKeyBinding
+---@field mods string
+---@field hint string
+---@field action_name WorkspaceManagerSwitcherAction
+
+---@class WorkspaceManagerSwitcherKeyEntry
+---@field key string
+---@field mods string
+---@field action KeyAssignment
+
+---@class WorkspaceManagerSwitchOptions
+---@field name string
+---@field spawn? { cwd?: string }
+
+---@class WorkspaceManagerSwitcherContext
+---@field workspace_choices WorkspaceManagerWorkspaceChoice[]
+---@field custom_choices WorkspaceManagerSuggestionChoice[]
+---@field is_zoxide boolean
+---@field label_overrides table<string, string>
+---@field workspace_counts? table<string, WorkspaceManagerCounts>
+---@field current_workspace string
+---@field current_display string
+---@field existing_workspace_ids table<string, boolean>
+---@field saved_workspace_ids table<string, boolean>
+---@field custom_entry_map table<string, WorkspaceManagerSuggestionChoice>
+
+---@class WorkspaceManagerDisplayChoice
+---@field id string
+---@field label string
+
 -- ============================================================================
 -- Switcher Key Configuration
 -- ============================================================================
 
 -- Default in-switcher action key bindings. Single source of truth — key table,
 -- description hints, and legend are all generated from this.
+---@type table<WorkspaceManagerSwitcherAction, WorkspaceManagerKeyBinding>
 local DEFAULT_SWITCHER_KEYS = {
   delete = { key = "d", mods = "CTRL", hint = "del" },
   unload = { key = "u", mods = "CTRL", hint = "unload" },
@@ -24,6 +55,7 @@ local DEFAULT_SWITCHER_KEYS = {
   rename = { key = "r", mods = "CTRL", hint = "rename" },
 }
 -- Explicit order for deterministic hint text (pairs() order is undefined in Lua)
+---@type WorkspaceManagerSwitcherAction[]
 local SWITCHER_KEY_ORDER = {
   "delete",
   "unload",
@@ -32,8 +64,9 @@ local SWITCHER_KEY_ORDER = {
   "rename",
 }
 
--- Returns the resolved key config as an ordered list, merging settings.switcher_keys overrides
--- with defaults. Each entry: { key, mods, hint, action_name }. Disabled actions (false) omitted.
+---Returns the resolved switcher bindings in display order.
+---Disabled actions are omitted.
+---@return WorkspaceManagerResolvedKeyBinding[]
 local function get_resolved_switcher_keys()
   local result = {}
   local user_keys = settings.switcher_keys or {}
@@ -61,7 +94,9 @@ local function get_resolved_switcher_keys()
   return result
 end
 
--- Converts a binding to a short display string, e.g. { key="d", mods="CTRL" } => "^D".
+---Converts a binding to a short display string such as `^D`.
+---@param binding WorkspaceManagerResolvedKeyBinding
+---@return string
 local function format_key_hint(binding)
   local mods = binding.mods or "NONE"
   local prefix = ""
@@ -74,8 +109,9 @@ local function format_key_hint(binding)
   return prefix .. key
 end
 
--- Builds a hint string from the resolved key config, e.g. "^D=del  ^N=new  ^P=path  ^R=rename".
--- separator: string between entries (default "  "). Returns "" if all actions are disabled.
+---Builds the configured switcher-action hint text.
+---@param separator? string text between entries; defaults to two spaces
+---@return string
 function mod.build_switcher_hints(separator)
   separator = separator or "  "
   local parts = {}
@@ -85,8 +121,9 @@ function mod.build_switcher_hints(separator)
   return table.concat(parts, separator)
 end
 
--- Builds the workspace_switcher_actions key table entries from the resolved config.
--- Always includes Enter (select) and Escape (cancel) as non-configurable entries.
+---Builds the workspace switcher's key-table entries.
+---Enter and Escape are always included.
+---@return WorkspaceManagerSwitcherKeyEntry[]
 function mod.build_switcher_key_table()
   local entries = { mod.switcher_keymap_cancel("Enter") }
   for _, binding in ipairs(get_resolved_switcher_keys()) do
@@ -103,14 +140,20 @@ end
 -- Switcher State
 -- ============================================================================
 
--- Tracks which action the key table intercepted so the InputSelector callback
--- can dispatch to kill/rename/new instead of the default switch.
+---@class WorkspaceManagerSwitcherState
+---@field pending_action? WorkspaceManagerSwitcherAction
+
+---Tracks which action the key table intercepted for callback dispatch.
+---@type WorkspaceManagerSwitcherState
 local switcher_state = {
-  pending_action = nil, -- configured action name, or nil for default switch
+  pending_action = nil,
 }
 
--- Creates a key table entry that sets pending_action, pops the key table, and
--- sends a synthetic Enter to close the InputSelector and fire its callback.
+---Creates a switcher key entry that dispatches a configured action.
+---@param key string
+---@param mods string
+---@param action WorkspaceManagerSwitcherAction
+---@return WorkspaceManagerSwitcherKeyEntry
 function mod.switcher_keymap(key, mods, action)
   return {
     key = key,
@@ -123,8 +166,10 @@ function mod.switcher_keymap(key, mods, action)
   }
 end
 
--- Creates a key table entry that clears pending_action, pops the key table,
--- and forwards the key to InputSelector (used for Escape to cancel).
+---Creates a key entry that forwards selection or cancellation.
+---@param key string
+---@param mods? string
+---@return WorkspaceManagerSwitcherKeyEntry
 function mod.switcher_keymap_cancel(key, mods)
   return {
     key = key,
@@ -141,12 +186,20 @@ end
 -- Action Handlers
 -- ============================================================================
 
+---Switches workspaces and records the transition in history.
+---@param window GuiWindow
+---@param pane Pane
+---@param opts WorkspaceManagerSwitchOptions
 local function switch_workspace(window, pane, opts)
   local old_workspace = window:active_workspace()
   window:perform_action(act.SwitchToWorkspace(opts), pane)
   history.record_workspace_switch(old_workspace, opts.name)
 end
 
+---Closes all panes belonging to a workspace.
+---@param workspace_name string
+---@param window GuiWindow
+---@return boolean
 local function close_workspace_panes(workspace_name, window)
   wezterm.log_info(
     "workspace_manager: close_workspace_panes called for: "
@@ -296,6 +349,8 @@ local function close_workspace_panes(workspace_name, window)
   return true
 end
 
+---Removes a workspace from persisted access history.
+---@param workspace_name string
 local function remove_workspace_history(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
   if wezterm.GLOBAL.workspace_access_times then
@@ -304,6 +359,11 @@ local function remove_workspace_history(workspace_name)
   end
 end
 
+---Renames or merges a workspace and its persisted state.
+---@param old_name string
+---@param new_name? string
+---@param window GuiWindow
+---@param pane Pane
 local function do_rename_workspace(old_name, new_name, window, pane)
   if not new_name or new_name == "" or new_name == old_name then return end
 
@@ -377,7 +437,9 @@ end
 -- Switcher Choices
 -- ============================================================================
 
--- Keep original choices alongside display labels for callback dispatch.
+---Builds the unformatted choice collections used by the switcher.
+---@param window GuiWindow
+---@return WorkspaceManagerSwitcherContext
 local function build_switcher_context(window)
   local workspace_choices
   if settings.workspace_switcher_sort == "alphabetical" then
@@ -425,6 +487,8 @@ local function build_switcher_context(window)
   return context
 end
 
+---Returns the configured choice predicate, if any.
+---@return WorkspaceManagerChoiceFilter?
 local function get_switcher_filter()
   if type(settings.filter_choices) == "function" then
     return settings.filter_choices
@@ -441,6 +505,11 @@ local function get_switcher_filter()
   end
 end
 
+---Formats a live or saved workspace for the switcher.
+---@param context WorkspaceManagerSwitcherContext
+---@param choice WorkspaceManagerWorkspaceChoice
+---@param is_current boolean
+---@return WorkspaceManagerDisplayChoice
 local function format_workspace_choice(context, choice, is_current)
   local count_suffix = ""
   if context.workspace_counts and context.workspace_counts[choice.id] then
@@ -468,6 +537,9 @@ local function format_workspace_choice(context, choice, is_current)
   }
 end
 
+---Builds all visible switcher choices in display order.
+---@param context WorkspaceManagerSwitcherContext
+---@return WorkspaceManagerDisplayChoice[]
 local function build_switcher_choices(context)
   local filter = get_switcher_filter()
   local choices = {}
@@ -510,6 +582,10 @@ local function build_switcher_choices(context)
   return choices
 end
 
+---Builds normal and fuzzy-mode switcher descriptions.
+---@param current_display string
+---@return string description
+---@return string fuzzy_description
 local function build_switcher_descriptions(current_display)
   local hints_infix = ""
   if settings.show_switcher_hints then
@@ -544,6 +620,9 @@ end
 -- Switcher Actions
 -- ============================================================================
 
+---Reopens the workspace switcher after a nested action.
+---@param window GuiWindow
+---@param pane Pane
 local function reopen_switcher(window, pane)
   wezterm.time.call_after(
     0.1,
@@ -551,7 +630,10 @@ local function reopen_switcher(window, pane)
   )
 end
 
--- All switcher routes save and announce the source before changing workspaces.
+---Saves and announces the source before switching workspaces.
+---@param window GuiWindow
+---@param pane Pane
+---@param opts WorkspaceManagerSwitchOptions
 local function switch_from_switcher(window, pane, opts)
   local old_workspace = window:active_workspace()
   if
@@ -575,7 +657,10 @@ local function switch_from_switcher(window, pane, opts)
   history.update_access_time(opts.name)
 end
 
--- The optional event argument is the expanded path for path/custom creations.
+---Finishes workspace creation and emits the creation event.
+---@param pane Pane
+---@param workspace_name string
+---@param ... string?
 local function finish_workspace_creation(pane, workspace_name, ...)
   local new_mux_window = data.get_current_mux_window(workspace_name)
   if settings.session_enabled then
@@ -590,6 +675,8 @@ local function finish_workspace_creation(pane, workspace_name, ...)
   )
 end
 
+---Restores focus to the window focused when a workspace was saved.
+---@param workspace_name string
 local function restore_workspace_focus(workspace_name)
   if
     not settings.session_enabled or state.is_excluded_workspace(workspace_name)
@@ -617,6 +704,10 @@ local function restore_workspace_focus(workspace_name)
   end
 end
 
+---Selects an existing live workspace.
+---@param window GuiWindow
+---@param pane Pane
+---@param workspace_name string
 local function select_live_workspace(window, pane, workspace_name)
   switch_from_switcher(window, pane, { name = workspace_name })
   local new_mux_window = data.get_current_mux_window(workspace_name)
@@ -629,6 +720,10 @@ local function select_live_workspace(window, pane, workspace_name)
   )
 end
 
+---Selects and restores a saved-only workspace.
+---@param window GuiWindow
+---@param pane Pane
+---@param workspace_name string
 local function select_saved_workspace(window, pane, workspace_name)
   switch_from_switcher(window, pane, { name = workspace_name })
   local new_mux_window = data.get_current_mux_window(workspace_name)
@@ -641,6 +736,11 @@ local function select_saved_workspace(window, pane, workspace_name)
   )
 end
 
+---Creates a workspace from a configured or zoxide suggestion.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param id string
 local function select_custom_entry(context, window, pane, id)
   local entry = context.custom_entry_map[id]
   local workspace_name, expanded_path
@@ -663,6 +763,11 @@ local function select_custom_entry(context, window, pane, id)
   finish_workspace_creation(pane, workspace_name, expanded_path)
 end
 
+---Deletes the selected saved or live workspace.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param id string
 local function delete_selected_workspace(context, window, pane, id)
   wezterm.log_info(
     "workspace_manager: switcher delete action, id=" .. tostring(id)
@@ -703,6 +808,11 @@ local function delete_selected_workspace(context, window, pane, id)
   reopen_switcher(window, pane)
 end
 
+---Saves and closes the selected live workspace.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param id string
 local function unload_selected_workspace(context, window, pane, id)
   wezterm.log_info(
     "workspace_manager: switcher unload action, id=" .. tostring(id)
@@ -749,6 +859,11 @@ local function unload_selected_workspace(context, window, pane, id)
   reopen_switcher(window, pane)
 end
 
+---Prompts for a replacement workspace name.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param id string
 local function prompt_workspace_rename(context, window, pane, id)
   if
     not context.existing_workspace_ids[id]
@@ -777,6 +892,9 @@ local function prompt_workspace_rename(context, window, pane, id)
   )
 end
 
+---Prompts for a new workspace name.
+---@param window GuiWindow
+---@param pane Pane
 local function prompt_workspace_name(window, pane)
   window:perform_action(
     act.PromptInputLine({
@@ -799,7 +917,12 @@ local function prompt_workspace_name(window, pane)
   )
 end
 
--- Continue only after the user accepts directory creation and mkdir succeeds.
+---Confirms and creates a missing workspace directory.
+---@param window GuiWindow
+---@param pane Pane
+---@param path string expanded path
+---@param display_path string user-entered path
+---@param on_ready fun()
 local function confirm_directory_creation(
   window,
   pane,
@@ -846,6 +969,11 @@ local function confirm_directory_creation(
   )
 end
 
+---Creates a workspace rooted at a path, prompting to create it if needed.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param path string
 local function create_workspace_at_path(context, window, pane, path)
   local workspace_name, expanded_path =
     helpers.get_workspace_name_and_path(path)
@@ -873,6 +1001,10 @@ local function create_workspace_at_path(context, window, pane, path)
   end
 end
 
+---Prompts for a new workspace path.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
 local function prompt_workspace_path(context, window, pane)
   window:perform_action(
     act.PromptInputLine({
@@ -891,6 +1023,12 @@ local function prompt_workspace_path(context, window, pane)
   )
 end
 
+---Dispatches the selection or configured action that closed the switcher.
+---@param context WorkspaceManagerSwitcherContext
+---@param window GuiWindow
+---@param pane Pane
+---@param id? string
+---@param label? string
 local function handle_switcher_selection(context, window, pane, id, label)
   local pending = switcher_state.pending_action
   switcher_state.pending_action = nil
@@ -922,6 +1060,8 @@ end
 -- Exported Actions
 -- ============================================================================
 
+---Returns an action that opens the workspace switcher.
+---@return KeyAssignment
 function mod.workspace_switcher()
   return wezterm.action_callback(function(window, pane)
     local context = build_switcher_context(window)
@@ -961,6 +1101,8 @@ function mod.workspace_switcher()
   end)
 end
 
+---Returns an action that switches to the previously active workspace.
+---@return KeyAssignment
 function mod.switch_to_previous_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
@@ -1001,6 +1143,8 @@ function mod.switch_to_previous_workspace()
   end)
 end
 
+---Returns an action that cycles to the next workspace.
+---@return KeyAssignment
 function mod.next_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
@@ -1060,6 +1204,8 @@ function mod.next_workspace()
   end)
 end
 
+---Returns an action that cycles to the previous workspace.
+---@return KeyAssignment
 function mod.previous_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
@@ -1120,6 +1266,8 @@ function mod.previous_workspace()
   end)
 end
 
+---Returns an action that saves the active workspace.
+---@return KeyAssignment
 function mod.save_workspace()
   return wezterm.action_callback(function(window, pane)
     if not settings.session_enabled then

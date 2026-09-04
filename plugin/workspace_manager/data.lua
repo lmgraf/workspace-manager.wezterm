@@ -1,4 +1,4 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local mux = wezterm.mux
 local settings = require("workspace_manager.settings")
 local helpers = require("workspace_manager.helpers")
@@ -6,6 +6,13 @@ local state = require("workspace_manager.state")
 
 local mod = {}
 
+---@class WorkspaceManagerCounts
+---@field windows integer
+---@field tabs integer
+---@field panes integer
+
+---Returns live and saved workspace choices in recency order.
+---@return WorkspaceManagerWorkspaceChoice[]
 function mod.get_workspace_choices()
   local choices = {}
   local access_times = wezterm.GLOBAL.workspace_access_times or {}
@@ -43,6 +50,8 @@ function mod.get_workspace_choices()
   return choices
 end
 
+---Returns live workspace choices in alphabetical cycle order.
+---@return WorkspaceManagerCycleChoice[]
 function mod.get_workspace_cycle_order()
   local choices = {}
 
@@ -65,7 +74,8 @@ function mod.get_workspace_cycle_order()
   return choices
 end
 
--- Returns workspace choices sorted alphabetically, including saved workspaces when session is enabled
+---Returns live and saved workspace choices in alphabetical order.
+---@return WorkspaceManagerWorkspaceChoice[]
 function mod.get_workspace_choices_alphabetical()
   local choices = mod.get_workspace_choices()
   table.sort(
@@ -76,8 +86,7 @@ function mod.get_workspace_choices_alphabetical()
 end
 
 ---Returns up to `limit` paths from zoxide history as plain strings.
----Intended for use inside a `get_choices` function.
----@param limit? number  Maximum number of paths to return (default: all)
+---@param limit? integer Maximum number of paths; defaults to all paths.
 ---@return string[]
 function mod.get_zoxide_paths(limit)
   local paths = {}
@@ -97,6 +106,9 @@ function mod.get_zoxide_paths(limit)
   return paths
 end
 
+---Returns zoxide suggestions not represented by an existing workspace.
+---@param workspace_normalized_set table<string, boolean>
+---@return WorkspaceManagerSuggestionChoice[]
 function mod.get_zoxide_choices(workspace_normalized_set)
   local choices = {}
   local success, stdout, _ = wezterm.run_child_process({
@@ -124,6 +136,11 @@ function mod.get_zoxide_choices(workspace_normalized_set)
   return choices
 end
 
+---Returns configured or zoxide suggestions and any workspace label overrides.
+---@param workspace_normalized_set table<string, boolean>
+---@return WorkspaceManagerSuggestionChoice[] choices
+---@return boolean is_zoxide
+---@return table<string, string> label_overrides
 function mod.get_custom_choices(workspace_normalized_set)
   if settings.get_choices == false then return {}, false, {} end
 
@@ -165,6 +182,8 @@ function mod.get_custom_choices(workspace_normalized_set)
   return mod.get_zoxide_choices(workspace_normalized_set), true, {}
 end
 
+---Counts windows, tabs, and panes in each live workspace.
+---@return table<string, WorkspaceManagerCounts>
 function mod.get_workspace_counts()
   local counts = {}
 
@@ -181,6 +200,10 @@ function mod.get_workspace_counts()
   return counts
 end
 
+---Formats a workspace's resource counts for a switcher label.
+---@param counts? WorkspaceManagerCounts
+---@param format? WorkspaceManagerCountFormat
+---@return string
 function mod.format_counts(counts, format)
   if not counts or not format then return "" end
 
@@ -213,7 +236,7 @@ function mod.format_counts(counts, format)
   return ""
 end
 
----Get the MuxWindow for a given workspace
+---Returns the first mux window belonging to a workspace.
 ---@param workspace string
 ---@return MuxWindow
 function mod.get_current_mux_window(workspace)

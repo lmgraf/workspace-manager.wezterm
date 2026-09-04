@@ -1,19 +1,45 @@
-local wezterm = require("wezterm") --[[@as Wezterm]] --- this type cast invokes the LSP module for Wezterm
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local utils = require("workspace_manager.session.utils")
 
----@class pane_tree_module
+---@class WorkspaceManagerPaneTreeModule
 ---@field max_nlines integer
 local pub = {}
 pub.max_nlines = 3500
 
----@alias Pane any
----@alias PaneInformation {left: integer, top: integer, height: integer, width: integer}
----@alias pane_tree {left: integer, top: integer, height: integer, width: integer, bottom: pane_tree?, right: pane_tree?, text: string, cwd: string, domain?: string, process?: local_process_info?, pane: Pane?, is_active: boolean, is_zoomed: boolean, alt_screen_active: boolean}
----@alias local_process_info {name: string, argv: string[], cwd: string, executable: string}
+---@class WorkspaceManagerPaneInformation
+---@field pane Pane
+---@field left integer
+---@field top integer
+---@field height integer
+---@field width integer
+---@field is_active boolean
+---@field is_zoomed boolean
 
----compare function returns true if a is more left than b
----@param a PaneInformation
----@param b PaneInformation
+---@class WorkspaceManagerProcessState
+---@field name string
+---@field argv string[]
+---@field cwd string
+---@field executable string
+
+---@class WorkspaceManagerPaneTree
+---@field left integer
+---@field top integer
+---@field height integer
+---@field width integer
+---@field bottom? WorkspaceManagerPaneTree
+---@field right? WorkspaceManagerPaneTree
+---@field text? string
+---@field cwd string
+---@field domain? string
+---@field process? WorkspaceManagerProcessState
+---@field pane? Pane
+---@field is_active boolean
+---@field is_zoomed boolean
+---@field alt_screen_active? boolean
+
+---Returns whether the first pane is positioned before the second pane.
+---@param a WorkspaceManagerPaneInformation
+---@param b WorkspaceManagerPaneInformation
 ---@return boolean
 local function compare_pane_by_coord(a, b)
   if a.left == b.left then
@@ -23,25 +49,25 @@ local function compare_pane_by_coord(a, b)
   end
 end
 
----@param root PaneInformation
----@param pane PaneInformation
+---@param root WorkspaceManagerPaneInformation
+---@param pane WorkspaceManagerPaneInformation
 ---@return boolean
 local function is_right(root, pane)
   if root.left + root.width < pane.left then return true end
   return false
 end
 
----@param root PaneInformation
----@param pane PaneInformation
+---@param root WorkspaceManagerPaneInformation
+---@param pane WorkspaceManagerPaneInformation
 ---@return boolean
 local function is_bottom(root, pane)
   if root.top + root.height < pane.top then return true end
   return false
 end
 
----@param root pane_tree
----@param panes PaneInformation
----@return pane_tree | nil
+---@param root WorkspaceManagerPaneTree
+---@param panes WorkspaceManagerPaneInformation[]
+---@return WorkspaceManagerPaneInformation?
 local function pop_connected_bottom(root, panes)
   for i, pane in ipairs(panes) do
     if root.left == pane.left and root.top + root.height + 1 == pane.top then
@@ -51,9 +77,9 @@ local function pop_connected_bottom(root, panes)
   end
 end
 
----@param root pane_tree
----@param panes PaneInformation
----@return pane_tree | nil
+---@param root WorkspaceManagerPaneTree
+---@param panes WorkspaceManagerPaneInformation[]
+---@return WorkspaceManagerPaneInformation?
 local function pop_connected_right(root, panes)
   for i, pane in ipairs(panes) do
     if root.top == pane.top and root.left + root.width + 1 == pane.left then
@@ -63,7 +89,7 @@ local function pop_connected_right(root, panes)
   end
 end
 
----@param node pane_tree | nil
+---@param node WorkspaceManagerPaneTree?
 ---@return integer
 local function subtree_height(node)
   if node == nil then return 0 end
@@ -71,7 +97,7 @@ local function subtree_height(node)
   return node.height
 end
 
----@param node pane_tree | nil
+---@param node WorkspaceManagerPaneTree?
 ---@return integer
 local function subtree_width(node)
   if node == nil then return 0 end
@@ -79,9 +105,9 @@ local function subtree_width(node)
   return node.width
 end
 
----@param root pane_tree | nil
----@param panes PaneInformation[]
----@return pane_tree | nil
+---@param root WorkspaceManagerPaneTree?
+---@param panes WorkspaceManagerPaneInformation[]
+---@return WorkspaceManagerPaneTree?
 local function insert_panes(root, panes)
   if root == nil then return nil end
 
@@ -176,19 +202,19 @@ end
 pub.subtree_height = subtree_height
 pub.subtree_width = subtree_width
 
----Create a pane tree from a list of PaneInformation
----@param panes PaneInformation
----@return pane_tree | nil
+---Creates a pane tree from an ordered list of pane information.
+---@param panes WorkspaceManagerPaneInformation[]
+---@return WorkspaceManagerPaneTree?
 function pub.create_pane_tree(panes)
   table.sort(panes, compare_pane_by_coord)
   local root = table.remove(panes, 1)
   return insert_panes(root, panes)
 end
 
----maps over the pane tree
----@param pane_tree pane_tree
----@param f fun(pane_tree: pane_tree): pane_tree
----@return nil
+---Maps a function over every node in a pane tree.
+---@param pane_tree WorkspaceManagerPaneTree?
+---@param f fun(pane_tree: WorkspaceManagerPaneTree): WorkspaceManagerPaneTree
+---@return WorkspaceManagerPaneTree?
 function pub.map(pane_tree, f)
   if pane_tree == nil then return nil end
 
@@ -199,6 +225,12 @@ function pub.map(pane_tree, f)
   return pane_tree
 end
 
+---Folds every node in a pane tree into an accumulator.
+---@generic T
+---@param pane_tree WorkspaceManagerPaneTree?
+---@param acc T
+---@param f fun(acc: T, pane_tree: WorkspaceManagerPaneTree): T
+---@return T
 function pub.fold(pane_tree, acc, f)
   if pane_tree == nil then return acc end
 

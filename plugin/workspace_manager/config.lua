@@ -1,4 +1,4 @@
-local wezterm = require("wezterm")
+local wezterm = require("wezterm") --[[@as Wezterm]]
 local mux = wezterm.mux
 local settings = require("workspace_manager.settings")
 local theme = require("workspace_manager.theme")
@@ -9,6 +9,8 @@ local actions = require("workspace_manager.actions")
 
 local mod = {}
 
+---Formats the configured in-switcher action legend.
+---@return string
 function mod.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
   local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel")
@@ -19,9 +21,13 @@ function mod.get_switcher_legend()
   })
 end
 
+---Registers workspace tracking, session persistence, and switcher keys.
+---@param config Config
 function mod.apply_to_config(config)
   -- Plugin actions track switches directly. Observe external switches too:
   -- WezTerm can reuse a focused GUI window without a focus-change event.
+  ---Tracks an externally activated workspace when its GUI window is focused.
+  ---@param window? GuiWindow
   local function track_workspace(window)
     if not window or not window:is_focused() then return end
     history.record_workspace_switch(
@@ -40,6 +46,7 @@ function mod.apply_to_config(config)
 
     -- Periodic save timer
     if settings.session_periodic_save_interval then
+      ---Schedules the next session save after the configured interval.
       local function periodic_save()
         wezterm.time.call_after(settings.session_periodic_save_interval, function()
           if settings.session_periodic_save_all then
@@ -83,6 +90,7 @@ function mod.apply_to_config(config)
         local _, _, window = mux.spawn_window(spawn_args)
         history.record_workspace_switch(nil, workspace_name)
 
+        ---Restores the saved layout after startup window geometry stabilizes.
         local function do_restore()
           state.restore_workspace_state(workspace_name, window, {
             relative = true,
@@ -135,6 +143,8 @@ function mod.apply_to_config(config)
     actions.build_switcher_key_table()
 end
 
+---Appends the plugin's default workspace key assignments.
+---@param config Config
 function mod.apply_default_keybindings(config)
   -- Default keybindings (users can override by setting their own keys)
   local keys = config.keys or {}

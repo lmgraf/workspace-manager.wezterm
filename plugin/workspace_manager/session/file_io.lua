@@ -2,8 +2,11 @@ local wezterm = require("wezterm") --[[@as Wezterm]]
 
 local pub = {}
 
--- Write a file with the content of a string
+---@alias WorkspaceManagerStateEventType "workspace"|"window"|"tab"
+
+---Writes a string to a file.
 ---@param file_path string full filename
+---@param str string file contents
 ---@return boolean success result
 ---@return string|nil error
 function pub.write_file(file_path, str)
@@ -27,7 +30,7 @@ function pub.write_file(file_path, str)
   return suc, err
 end
 
--- Read a file and return its content
+---Reads and returns a file's contents.
 ---@param file_path string full filename
 ---@return boolean success result
 ---@return string|nil error
@@ -46,9 +49,9 @@ function pub.read_file(file_path)
   end
 end
 
---- Sanitize the input by replacing control characters and invalid UTF-8 sequences with valid \uxxxx unicode
---- @param data string
---- @return string
+---Escapes control characters so the input can be encoded as JSON.
+---@param data string
+---@return string
 local function sanitize_json(data)
   -- escapes control characters to ensure valid json
   data = data:gsub(
@@ -58,9 +61,10 @@ local function sanitize_json(data)
   return data
 end
 
+---Serializes and writes a saved session state.
 ---@param file_path string
 ---@param state table
----@param event_type "workspace" | "window" | "tab"
+---@param event_type WorkspaceManagerStateEventType
 ---@return boolean success result
 ---@return string|nil error
 function pub.write_state(file_path, state, event_type)
@@ -73,6 +77,7 @@ function pub.write_state(file_path, state, event_type)
   return ok, err
 end
 
+---Loads and decodes a JSON file.
 ---@param file_path string
 ---@return table|nil
 function pub.load_json(file_path)
