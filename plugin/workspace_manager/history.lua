@@ -1,22 +1,22 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 local helpers = require("workspace_manager.helpers")
 
-local mod = {}
+local M = {}
 
 ---@alias WorkspaceManagerHistory table<string, integer>
 
-mod.HISTORY_DIR = wezterm.home_dir .. "/.local/share/wezterm"
-mod.HISTORY_FILE = mod.HISTORY_DIR .. "/workspace_history.json"
+M.HISTORY_DIR = wezterm.home_dir .. "/.local/share/wezterm"
+M.HISTORY_FILE = M.HISTORY_DIR .. "/workspace_history.json"
 
 local function ensure_dir()
   -- See state.lua: os.execute() flashes a console window on Windows.
-  helpers.create_directory(mod.HISTORY_DIR)
+  helpers.create_directory(M.HISTORY_DIR)
 end
 
 ---Loads workspace access timestamps from disk.
 ---@return WorkspaceManagerHistory
-function mod.load()
-  local file = io.open(mod.HISTORY_FILE, "r")
+function M.load()
+  local file = io.open(M.HISTORY_FILE, "r")
   if file then
     local content = file:read("*all")
     file:close()
@@ -28,9 +28,9 @@ end
 
 ---Writes workspace access timestamps to disk.
 ---@param history WorkspaceManagerHistory
-function mod.save(history)
+function M.save(history)
   ensure_dir()
-  local file = io.open(mod.HISTORY_FILE, "w")
+  local file = io.open(M.HISTORY_FILE, "w")
   if file then
     file:write(wezterm.json_encode(history))
     file:close()
@@ -40,7 +40,7 @@ end
 ---Tracks raw workspace ids because display normalization can change identity.
 ---@param old_workspace? string
 ---@param new_workspace? string
-function mod.record_workspace_switch(old_workspace, new_workspace)
+function M.record_workspace_switch(old_workspace, new_workspace)
   if not new_workspace then return end
   if old_workspace and old_workspace ~= new_workspace then
     wezterm.GLOBAL.previous_workspace = old_workspace
@@ -50,16 +50,16 @@ end
 
 ---Records the current time as a workspace's most recent access.
 ---@param workspace_name string
-function mod.update_access_time(workspace_name)
+function M.update_access_time(workspace_name)
   local normalized = helpers.normalize_workspace_name(workspace_name)
   wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times
     or {}
   wezterm.GLOBAL.workspace_access_times[normalized] = os.time()
-  mod.save(wezterm.GLOBAL.workspace_access_times)
+  M.save(wezterm.GLOBAL.workspace_access_times)
 end
 
 -- Initialize on first load
 wezterm.GLOBAL.workspace_access_times = wezterm.GLOBAL.workspace_access_times
-  or mod.load()
+  or M.load()
 
-return mod
+return M

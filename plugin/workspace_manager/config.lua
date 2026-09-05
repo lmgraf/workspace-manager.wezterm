@@ -7,11 +7,11 @@ local history = require("workspace_manager.history")
 local state = require("workspace_manager.state")
 local actions = require("workspace_manager.actions")
 
-local mod = {}
+local M = {}
 
 ---Formats the configured in-switcher action legend.
 ---@return string
-function mod.get_switcher_legend()
+function M.get_switcher_legend()
   local hints = actions.build_switcher_hints("  ")
   local text = hints ~= "" and ("  " .. hints .. "  Esc=cancel")
     or "  Esc=cancel"
@@ -22,7 +22,7 @@ end
 
 ---Registers workspace tracking, session persistence, and switcher keys.
 ---@param config Config
-function mod.apply_to_config(config)
+function M.apply_to_config(config)
   -- Plugin actions track switches directly. Observe external switches too:
   -- WezTerm can reuse a focused GUI window without a focus-change event.
   ---Tracks an externally activated workspace when its GUI window is focused.
@@ -147,7 +147,7 @@ end
 
 ---Appends the plugin's default workspace key assignments.
 ---@param config Config
-function mod.apply_default_keybindings(config)
+function M.apply_default_keybindings(config)
   -- Default keybindings (users can override by setting their own keys)
   local keys = config.keys or {}
 
@@ -178,4 +178,4 @@ function mod.apply_default_keybindings(config)
   config.keys = keys
 end
 
-return mod
+return M

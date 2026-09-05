@@ -4,7 +4,7 @@ local settings = require("workspace_manager.settings")
 local helpers = require("workspace_manager.helpers")
 local state = require("workspace_manager.state")
 
-local mod = {}
+local M = {}
 
 ---@class WorkspaceManagerCounts
 ---@field windows integer
@@ -13,7 +13,7 @@ local mod = {}
 
 ---Returns live and saved workspace choices in recency order.
 ---@return WorkspaceManagerWorkspaceChoice[]
-function mod.get_workspace_choices()
+function M.get_workspace_choices()
   local choices = {}
   local access_times = wezterm.GLOBAL.workspace_access_times or {}
 
@@ -52,7 +52,7 @@ end
 
 ---Returns live workspace choices in alphabetical cycle order.
 ---@return WorkspaceManagerCycleChoice[]
-function mod.get_workspace_cycle_order()
+function M.get_workspace_cycle_order()
   local choices = {}
 
   for _, ws in ipairs(mux.get_workspace_names()) do
@@ -76,8 +76,8 @@ end
 
 ---Returns live and saved workspace choices in alphabetical order.
 ---@return WorkspaceManagerWorkspaceChoice[]
-function mod.get_workspace_choices_alphabetical()
-  local choices = mod.get_workspace_choices()
+function M.get_workspace_choices_alphabetical()
+  local choices = M.get_workspace_choices()
   table.sort(
     choices,
     function(a, b) return a.normalized:lower() < b.normalized:lower() end
@@ -88,7 +88,7 @@ end
 ---Returns up to `limit` paths from zoxide history as plain strings.
 ---@param limit? integer Maximum number of paths; defaults to all paths.
 ---@return string[]
-function mod.get_zoxide_paths(limit)
+function M.get_zoxide_paths(limit)
   local paths = {}
   local success, stdout, _ = wezterm.run_child_process({
     settings.zoxide_path,
@@ -109,7 +109,7 @@ end
 ---Returns zoxide suggestions not represented by an existing workspace.
 ---@param workspace_normalized_set table<string, boolean>
 ---@return WorkspaceManagerSuggestionChoice[]
-function mod.get_zoxide_choices(workspace_normalized_set)
+function M.get_zoxide_choices(workspace_normalized_set)
   local choices = {}
   local success, stdout, _ = wezterm.run_child_process({
     settings.zoxide_path,
@@ -141,7 +141,7 @@ end
 ---@return WorkspaceManagerSuggestionChoice[] choices
 ---@return boolean is_zoxide
 ---@return table<string, string> label_overrides
-function mod.get_custom_choices(workspace_normalized_set)
+function M.get_custom_choices(workspace_normalized_set)
   if settings.get_choices == false then return {}, false, {} end
 
   if type(settings.get_choices) == "function" then
@@ -179,12 +179,12 @@ function mod.get_custom_choices(workspace_normalized_set)
   end
 
   -- Default: built-in zoxide
-  return mod.get_zoxide_choices(workspace_normalized_set), true, {}
+  return M.get_zoxide_choices(workspace_normalized_set), true, {}
 end
 
 ---Counts windows, tabs, and panes in each live workspace.
 ---@return table<string, WorkspaceManagerCounts>
-function mod.get_workspace_counts()
+function M.get_workspace_counts()
   local counts = {}
 
   for _, mux_win in ipairs(mux.all_windows()) do
@@ -204,7 +204,7 @@ end
 ---@param counts? WorkspaceManagerCounts
 ---@param format? WorkspaceManagerCountFormat
 ---@return string
-function mod.format_counts(counts, format)
+function M.format_counts(counts, format)
   if not counts or not format then return "" end
 
   local parts = {}
@@ -239,7 +239,7 @@ end
 ---Returns the first mux window belonging to a workspace.
 ---@param workspace string
 ---@return MuxWindow
-function mod.get_current_mux_window(workspace)
+function M.get_current_mux_window(workspace)
   wezterm.log_info(
     "get_current_mux_window called for workspace: " .. tostring(workspace)
   )
@@ -269,4 +269,4 @@ function mod.get_current_mux_window(workspace)
   error("Could not find a workspace with the name: " .. workspace)
 end
 
-return mod
+return M

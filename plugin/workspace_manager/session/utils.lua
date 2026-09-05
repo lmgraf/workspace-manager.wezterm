@@ -1,25 +1,25 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 
-local utils = {}
+local M = {}
 
-utils.is_windows = wezterm.target_triple == "x86_64-pc-windows-msvc"
-utils.is_mac = (
+M.is_windows = wezterm.target_triple == "x86_64-pc-windows-msvc"
+M.is_mac = (
   wezterm.target_triple == "x86_64-apple-darwin"
   or wezterm.target_triple == "aarch64-apple-darwin"
 )
-utils.separator = utils.is_windows and "\\" or "/"
+M.separator = M.is_windows and "\\" or "/"
 
 ---Removes terminal formatting escape sequences from a string.
 ---@param str string
 ---@return string
-function utils.strip_format_esc_seq(str)
+function M.strip_format_esc_seq(str)
   local clean_str, _ = str:gsub(string.char(27) .. "%[[^m]*m", "")
   return clean_str
 end
 
 ---Returns the focused window width, or a conservative fallback.
 ---@return number
-function utils.get_current_window_width()
+function M.get_current_window_width()
   local windows = wezterm.gui.gui_windows()
   for _, window in ipairs(windows) do
     if window:is_focused() then return window:active_tab():get_size().cols end
@@ -31,7 +31,7 @@ end
 ---@param str string string to be modified
 ---@param len number length to be removed from the middle of str
 ---@param pad string string that must be inserted in place of the missing part of str
-function utils.replace_center(str, len, pad)
+function M.replace_center(str, len, pad)
   local mid = #str // 2
   local start = mid - (len // 2)
   return str:sub(1, start) .. pad .. str:sub(start + len + 1)
@@ -40,7 +40,7 @@ end
 ---Returns the number of UTF-8 code points in a string.
 ---@param str string
 ---@return number
-function utils.utf8len(str)
+function M.utf8len(str)
   local _, len = str:gsub("[%z\1-\127\194-\244][\128-\191]*", "")
   return len
 end
@@ -49,7 +49,7 @@ end
 ---@param cmd string command
 ---@return boolean success result
 ---@return string|nil error
-function utils.execute(cmd)
+function M.execute(cmd)
   local stdout
   local suc, err = pcall(function()
     local handle = io.popen(cmd)
@@ -67,9 +67,9 @@ end
 
 ---Creates a directory if it does not exist.
 ---@param path string
-function utils.ensure_folder_exists(path)
+function M.ensure_folder_exists(path)
   -- os.execute() flashes a console window on Windows; run_child_process() does not.
-  if utils.is_windows then
+  if M.is_windows then
     wezterm.run_child_process({ "cmd", "/c", "mkdir", (path:gsub("/", "\\")) })
   else
     wezterm.run_child_process({ "mkdir", "-p", path })
@@ -80,12 +80,12 @@ end
 ---@generic T
 ---@param original T
 ---@return T copy
-function utils.deepcopy(original)
+function M.deepcopy(original)
   local copy
   if type(original) == "table" then
     copy = {}
     for k, v in pairs(original) do
-      copy[k] = utils.deepcopy(v)
+      copy[k] = M.deepcopy(v)
     end
   else
     copy = original
@@ -103,14 +103,14 @@ end
 ---@param behavior WorkspaceManagerMergeBehavior
 ---@param ... T
 ---@return T
-function utils.tbl_deep_extend(behavior, ...)
+function M.tbl_deep_extend(behavior, ...)
   local tables = { ... }
   if #tables == 0 then return {} end
 
   local result = {}
   for k, v in pairs(tables[1]) do
     if type(v) == "table" then
-      result[k] = utils.deepcopy(v)
+      result[k] = M.deepcopy(v)
     else
       result[k] = v
     end
@@ -120,7 +120,7 @@ function utils.tbl_deep_extend(behavior, ...)
     for k, v in pairs(tables[i]) do
       if type(result[k]) == "table" and type(v) == "table" then
         -- For nested tables, we recurse with the same behavior
-        result[k] = utils.tbl_deep_extend(behavior, result[k], v)
+        result[k] = M.tbl_deep_extend(behavior, result[k], v)
       elseif result[k] ~= nil then
         -- Key exists in the result already
         if behavior == "error" then
@@ -128,7 +128,7 @@ function utils.tbl_deep_extend(behavior, ...)
         elseif behavior == "force" then
           -- "force" uses value from rightmost table
           if type(v) == "table" then
-            result[k] = utils.deepcopy(v)
+            result[k] = M.deepcopy(v)
           else
             result[k] = v
           end
@@ -137,7 +137,7 @@ function utils.tbl_deep_extend(behavior, ...)
       else
         -- Key doesn't exist in result yet, add it
         if type(v) == "table" then
-          result[k] = utils.deepcopy(v)
+          result[k] = M.deepcopy(v)
         else
           result[k] = v
         end
@@ -148,4 +148,4 @@ function utils.tbl_deep_extend(behavior, ...)
   return result
 end
 
-return utils
+return M

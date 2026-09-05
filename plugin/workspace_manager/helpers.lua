@@ -2,18 +2,18 @@ local wezterm = require("wezterm") --[[@as Wezterm]]
 local mux = wezterm.mux
 local settings = require("workspace_manager.settings")
 
-local mod = {}
+local M = {}
 
 -- Platform constants
-mod.is_windows = wezterm.target_triple:find("windows") ~= nil
-mod.path_sep = mod.is_windows and "\\" or "/"
+M.is_windows = wezterm.target_triple:find("windows") ~= nil
+M.path_sep = M.is_windows and "\\" or "/"
 
 ---Shows a toast when plugin notifications are enabled.
 ---@param window Window
 ---@param title string
 ---@param message string
 ---@param timeout? integer
-function mod.notify(window, title, message, timeout)
+function M.notify(window, title, message, timeout)
   if not settings.notifications_enabled then return end
   pcall(
     function() window:toast_notification(title, message, nil, timeout or 2000) end
@@ -22,7 +22,7 @@ end
 
 ---Returns the configured or detected WezTerm executable path.
 ---@return string?
-function mod.get_wezterm_path()
+function M.get_wezterm_path()
   if settings.wezterm_path then
     return settings.wezterm_path -- User override
   end
@@ -30,7 +30,7 @@ function mod.get_wezterm_path()
   local exe_dir = wezterm.executable_dir
   if not exe_dir then return nil end
 
-  local exe_name = mod.is_windows and "wezterm.exe" or "wezterm"
+  local exe_name = M.is_windows and "wezterm.exe" or "wezterm"
   return exe_dir .. "/" .. exe_name
 end
 
@@ -42,7 +42,7 @@ end
 ---@param name string
 ---@return string normalized
 ---@return string expanded
-function mod.normalize_workspace_name(name)
+function M.normalize_workspace_name(name)
   if not name then return name end
   -- If starts with ~, expand to full path for cwd operations
   local expanded = string.gsub(name, "^~", wezterm.home_dir)
@@ -55,8 +55,8 @@ end
 ---@param raw_path string
 ---@return string workspace_name
 ---@return string expanded_path
-function mod.get_workspace_name_and_path(raw_path)
-  local normalized, expanded = mod.normalize_workspace_name(raw_path)
+function M.get_workspace_name_and_path(raw_path)
+  local normalized, expanded = M.normalize_workspace_name(raw_path)
 
   if not settings.use_basename_for_workspace_names then
     return normalized, expanded
@@ -70,7 +70,7 @@ function mod.get_workspace_name_and_path(raw_path)
 
   -- Check for duplicate basenames
   for _, ws in ipairs(mux.get_workspace_names()) do
-    local ws_normalized = mod.normalize_workspace_name(ws)
+    local ws_normalized = M.normalize_workspace_name(ws)
     if ws == basename and ws_normalized ~= normalized then
       -- Conflict: fall back to full path
       return normalized, expanded
@@ -87,8 +87,8 @@ end
 ---Returns whether a directory exists.
 ---@param path string
 ---@return boolean
-function mod.directory_exists(path)
-  if mod.is_windows then
+function M.directory_exists(path)
+  if M.is_windows then
     local success = wezterm.run_child_process({
       "cmd",
       "/c",
@@ -106,12 +106,12 @@ end
 ---@return boolean success
 ---@return string stdout
 ---@return string stderr
-function mod.create_directory(path)
-  if mod.is_windows then
+function M.create_directory(path)
+  if M.is_windows then
     return wezterm.run_child_process({ "cmd", "/c", "mkdir", path })
   else
     return wezterm.run_child_process({ "mkdir", "-p", path })
   end
 end
 
-return mod
+return M

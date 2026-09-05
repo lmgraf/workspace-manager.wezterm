@@ -8,7 +8,7 @@ local history = require("workspace_manager.history")
 local state = require("workspace_manager.state")
 local data = require("workspace_manager.data")
 
-local mod = {}
+local M = {}
 
 ---@class WorkspaceManagerResolvedKeyBinding: WorkspaceManagerKeyBinding
 ---@field mods string
@@ -112,7 +112,7 @@ end
 ---Builds the configured switcher-action hint text.
 ---@param separator? string text between entries; defaults to two spaces
 ---@return string
-function mod.build_switcher_hints(separator)
+function M.build_switcher_hints(separator)
   separator = separator or "  "
   local parts = {}
   for _, binding in ipairs(get_resolved_switcher_keys()) do
@@ -124,15 +124,15 @@ end
 ---Builds the workspace switcher's key-table entries.
 ---Enter and Escape are always included.
 ---@return WorkspaceManagerSwitcherKeyEntry[]
-function mod.build_switcher_key_table()
-  local entries = { mod.switcher_keymap_cancel("Enter") }
+function M.build_switcher_key_table()
+  local entries = { M.switcher_keymap_cancel("Enter") }
   for _, binding in ipairs(get_resolved_switcher_keys()) do
     table.insert(
       entries,
-      mod.switcher_keymap(binding.key, binding.mods, binding.action_name)
+      M.switcher_keymap(binding.key, binding.mods, binding.action_name)
     )
   end
-  table.insert(entries, mod.switcher_keymap_cancel("Escape"))
+  table.insert(entries, M.switcher_keymap_cancel("Escape"))
   return entries
 end
 
@@ -154,7 +154,7 @@ local switcher_state = {
 ---@param mods string
 ---@param action WorkspaceManagerSwitcherAction
 ---@return WorkspaceManagerSwitcherKeyEntry
-function mod.switcher_keymap(key, mods, action)
+function M.switcher_keymap(key, mods, action)
   return {
     key = key,
     mods = mods,
@@ -170,7 +170,7 @@ end
 ---@param key string
 ---@param mods? string
 ---@return WorkspaceManagerSwitcherKeyEntry
-function mod.switcher_keymap_cancel(key, mods)
+function M.switcher_keymap_cancel(key, mods)
   return {
     key = key,
     mods = mods or "NONE",
@@ -363,7 +363,8 @@ local function save_workspace_for_unload(
     and not state.is_excluded_workspace(workspace_name)
   if not should_save then return true end
 
-  local save_ok, save_err = state.save_workspace_state(workspace_name, gui_window)
+  local save_ok, save_err =
+    state.save_workspace_state(workspace_name, gui_window)
   if save_ok then return true end
 
   wezterm.log_warn(
@@ -393,9 +394,7 @@ end
 ---@return boolean
 local function unload_workspace(workspace_name, window, pane, opts)
   opts = opts or {}
-  if
-    not save_workspace_for_unload(workspace_name, window, opts.gui_window)
-  then
+  if not save_workspace_for_unload(workspace_name, window, opts.gui_window) then
     return false
   end
 
@@ -655,7 +654,7 @@ local function build_switcher_descriptions(current_display)
 
   local prefix = ""
   if settings.show_switcher_hints then
-    local hints = mod.build_switcher_hints(" ")
+    local hints = M.build_switcher_hints(" ")
     if hints ~= "" then prefix = hints .. sep end
   end
 
@@ -692,7 +691,7 @@ end
 local function reopen_switcher(window, pane)
   wezterm.time.call_after(
     0.1,
-    function() window:perform_action(mod.workspace_switcher(), pane) end
+    function() window:perform_action(M.workspace_switcher(), pane) end
   )
 end
 
@@ -1108,7 +1107,7 @@ end
 
 ---Returns an action that opens the workspace switcher.
 ---@return KeyAssignment
-function mod.workspace_switcher()
+function M.workspace_switcher()
   return wezterm.action_callback(function(window, pane)
     local context = build_switcher_context(window)
     local choices = build_switcher_choices(context)
@@ -1149,7 +1148,7 @@ end
 
 ---Returns an action that switches to the previously active workspace.
 ---@return KeyAssignment
-function mod.switch_to_previous_workspace()
+function M.switch_to_previous_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
     local previous_workspace = wezterm.GLOBAL.previous_workspace
@@ -1191,7 +1190,7 @@ end
 
 ---Returns an action that cycles to the next workspace.
 ---@return KeyAssignment
-function mod.next_workspace()
+function M.next_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
     local choices = data.get_workspace_cycle_order()
@@ -1253,7 +1252,7 @@ end
 
 ---Returns an action that cycles to the previous workspace.
 ---@return KeyAssignment
-function mod.previous_workspace()
+function M.previous_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
     local choices = data.get_workspace_cycle_order()
@@ -1317,7 +1316,7 @@ end
 ---Returns an action that saves and closes the active workspace.
 ---The previously active live workspace is preferred as the destination.
 ---@return KeyAssignment
-function mod.unload_current_workspace()
+function M.unload_current_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
     local previous_workspace = wezterm.GLOBAL.previous_workspace
@@ -1363,15 +1362,13 @@ function mod.unload_current_workspace()
       end,
     })
 
-    if unloaded then
-      wezterm.GLOBAL.previous_workspace = nil
-    end
+    if unloaded then wezterm.GLOBAL.previous_workspace = nil end
   end)
 end
 
 ---Returns an action that saves the active workspace.
 ---@return KeyAssignment
-function mod.save_workspace()
+function M.save_workspace()
   return wezterm.action_callback(function(window, pane)
     if not settings.session_enabled then
       helpers.notify(window, "Workspace", "Session persistence is not enabled")
@@ -1399,4 +1396,4 @@ function mod.save_workspace()
   end)
 end
 
-return mod
+return M

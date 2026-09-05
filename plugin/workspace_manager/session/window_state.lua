@@ -1,6 +1,6 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 local tab_state_mod = require("workspace_manager.session.tab_state")
-local pub = {}
+local M = {}
 
 ---@class WorkspaceManagerDimensions
 ---@field cols integer
@@ -20,7 +20,7 @@ local pub = {}
 ---Captures the state of a window.
 ---@param window MuxWindow
 ---@return WorkspaceManagerWindowState
-function pub.get_window_state(window)
+function M.get_window_state(window)
   local window_state = {
     title = window:get_title(),
     tabs = {},
@@ -65,7 +65,7 @@ end
 ---@param window MuxWindow
 ---@param window_state WorkspaceManagerWindowState
 ---@param opts? WorkspaceManagerRestoreOptions
-function pub.restore_window(window, window_state, opts)
+function M.restore_window(window, window_state, opts)
   if opts == nil then opts = {} end
 
   if window_state.title then window:set_title(window_state.title) end
@@ -96,4 +96,4 @@ function pub.restore_window(window, window_state, opts)
   if active_tab then active_tab:activate() end
 end
 
-return pub
+return M

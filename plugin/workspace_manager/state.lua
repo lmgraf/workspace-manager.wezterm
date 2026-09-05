@@ -4,7 +4,7 @@ local settings = require("workspace_manager.settings")
 local helpers = require("workspace_manager.helpers")
 local history = require("workspace_manager.history")
 
-local mod = {}
+local M = {}
 
 ---@class WorkspaceManagerRestoreOptions
 ---@field window? MuxWindow Window that receives the restored state.
@@ -39,7 +39,7 @@ end
 
 ---Returns the directory containing saved workspace state.
 ---@return string
-function mod.get_state_dir()
+function M.get_state_dir()
   if settings.session_state_dir then return settings.session_state_dir end
   return history.HISTORY_DIR .. "/workspace_state"
 end
@@ -49,13 +49,13 @@ local function ensure_state_dir()
   -- os.execute() goes through the C runtime's system(), which allocates a
   -- visible console for cmd.exe when the caller is a GUI process. That flashed
   -- a window on every periodic save. run_child_process() does not.
-  helpers.create_directory(mod.get_state_dir())
+  helpers.create_directory(M.get_state_dir())
 end
 
 ---Returns whether a workspace is excluded from session persistence.
 ---@param name string
 ---@return boolean
-function mod.is_excluded_workspace(name)
+function M.is_excluded_workspace(name)
   local normalized = helpers.normalize_workspace_name(name)
   for _, excluded in ipairs(settings.session_exclude_workspaces) do
     if normalized == excluded or name == excluded then return true end
@@ -83,7 +83,7 @@ end
 ---@param workspace_name string
 ---@return string
 local function get_state_file_path(workspace_name)
-  return mod.get_state_dir()
+  return M.get_state_dir()
     .. "/"
     .. workspace_name_to_filename(workspace_name)
     .. ".json"
@@ -91,11 +91,11 @@ end
 
 ---Returns the newest non-excluded workspace that has saved state.
 ---@return string?
-function mod.get_most_recent_saved_workspace()
+function M.get_most_recent_saved_workspace()
   local hist = history.load()
   local entries = {}
   for name, time in pairs(hist) do
-    if not mod.is_excluded_workspace(name) then
+    if not M.is_excluded_workspace(name) then
       table.insert(entries, { name = name, time = time })
     end
   end
@@ -115,8 +115,8 @@ end
 ---@param gui_win? Window
 ---@return boolean success
 ---@return string|nil error
-function mod.save_workspace_state(workspace_name, gui_win)
-  if mod.is_excluded_workspace(workspace_name) then
+function M.save_workspace_state(workspace_name, gui_win)
+  if M.is_excluded_workspace(workspace_name) then
     return false, "workspace is excluded from session saves"
   end
 
@@ -173,7 +173,7 @@ end
 ---Loads a workspace state file when it contains window state.
 ---@param workspace_name string
 ---@return WorkspaceManagerWorkspaceState?
-function mod.load_workspace_state(workspace_name)
+function M.load_workspace_state(workspace_name)
   local _, _, file_io = get_session_modules()
   local path = get_state_file_path(workspace_name)
   local ok, state = pcall(function() return file_io.load_json(path) end)
@@ -188,7 +188,7 @@ end
 
 ---Deletes a workspace's saved state file when present.
 ---@param workspace_name string
-function mod.delete_workspace_state(workspace_name)
+function M.delete_workspace_state(workspace_name)
   local path = get_state_file_path(workspace_name)
   local ok = os.remove(path)
   if ok then
@@ -203,7 +203,7 @@ end
 ---Renames a workspace's saved state file.
 ---@param old_name string
 ---@param new_name string
-function mod.rename_workspace_state(old_name, new_name)
+function M.rename_workspace_state(old_name, new_name)
   local old_path = get_state_file_path(old_name)
   local new_path = get_state_file_path(new_name)
   os.rename(old_path, new_path)
@@ -213,9 +213,9 @@ end
 ---@param workspace_name string
 ---@param mux_window MuxWindow
 ---@param restore_opts? WorkspaceManagerRestoreOptions
-function mod.restore_workspace_state(workspace_name, mux_window, restore_opts)
+function M.restore_workspace_state(workspace_name, mux_window, restore_opts)
   local workspace_state_mod, tab_state_mod, _ = get_session_modules()
-  local state = mod.load_workspace_state(workspace_name)
+  local state = M.load_workspace_state(workspace_name)
   if state then
     local on_pane_restore = settings.session_on_pane_restore
       or tab_state_mod.default_on_pane_restore
@@ -264,7 +264,7 @@ end
 ---@param stable_samples integer
 ---@param max_checks integer
 ---@param on_ready fun(stable: boolean)
-function mod.wait_for_stable_window(
+function M.wait_for_stable_window(
   window,
   interval_s,
   stable_samples,
@@ -325,8 +325,8 @@ end
 
 ---Returns saved workspace names that are neither excluded nor currently live.
 ---@return string[]
-function mod.get_saved_workspace_names()
-  local state_dir = mod.get_state_dir()
+function M.get_saved_workspace_names()
+  local state_dir = M.get_state_dir()
   local names = {}
 
   local ok, entries = pcall(wezterm.read_dir, state_dir)
@@ -348,7 +348,7 @@ function mod.get_saved_workspace_names()
       if
         not live_set[ws_name]
         and not live_set[normalized]
-        and not mod.is_excluded_workspace(ws_name)
+        and not M.is_excluded_workspace(ws_name)
       then
         table.insert(names, ws_name)
       end
@@ -358,4 +358,4 @@ function mod.get_saved_workspace_names()
   return names
 end
 
-return mod
+return M

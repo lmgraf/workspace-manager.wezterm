@@ -1,7 +1,7 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 local settings = require("workspace_manager.settings")
 
-local mod = {}
+local M = {}
 
 ---@class WorkspaceManagerStyledSegment
 ---@field text string
@@ -20,7 +20,7 @@ local DEFAULT_COLORS = {
 ---Returns a configured theme style or its default.
 ---@param key string
 ---@return WorkspaceManagerThemeStyle?
-function mod.get_color(key)
+function M.get_color(key)
   if settings.colors and settings.colors[key] ~= nil then
     return settings.colors[key]
   end
@@ -30,7 +30,7 @@ end
 ---Converts an ANSI name or hex color to a foreground format item.
 ---@param color_string string
 ---@return FormatItem
-function mod.fg(color_string)
+function M.fg(color_string)
   if color_string:sub(1, 1) == "#" then
     return { Foreground = { Color = color_string } }
   else
@@ -41,9 +41,9 @@ end
 ---Builds formatted prompt heading text using the configured style.
 ---@param text string
 ---@return FormatItem[]
-function mod.build_heading(text)
+function M.build_heading(text)
   local items = {}
-  mod.append_segment(items, text, mod.get_color("prompt_heading"))
+  M.append_segment(items, text, M.get_color("prompt_heading"))
   return items
 end
 
@@ -52,7 +52,7 @@ end
 ---@return WorkspaceManagerThemeStyle?
 local function resolve_color(...)
   for i = 1, select("#", ...) do
-    local color = mod.get_color(select(i, ...))
+    local color = M.get_color(select(i, ...))
     if color then return color end
   end
   return nil
@@ -81,11 +81,11 @@ end
 ---@param items FormatItem[]
 ---@param text string
 ---@param style? WorkspaceManagerThemeStyle
-function mod.append_segment(items, text, style)
+function M.append_segment(items, text, style)
   if text == "" then return end
   table.insert(items, "ResetAttributes")
   if type(style) == "string" then
-    table.insert(items, mod.fg(style))
+    table.insert(items, M.fg(style))
   elseif type(style) == "table" then
     for _, item in ipairs(style) do
       table.insert(items, item)
@@ -97,7 +97,7 @@ end
 ---Flattens ordered styled text segments into WezTerm format items.
 ---@param segments table<integer, WorkspaceManagerStyledSegment?>
 ---@return FormatItem[]
-function mod.build_format_items(segments)
+function M.build_format_items(segments)
   local items = {}
   local last_index = 0
   for index in pairs(segments) do
@@ -107,7 +107,7 @@ function mod.build_format_items(segments)
   end
   for index = 1, last_index do
     local segment = segments[index]
-    if segment then mod.append_segment(items, segment.text, segment.style) end
+    if segment then M.append_segment(items, segment.text, segment.style) end
   end
   table.insert(items, "ResetAttributes")
   return items
@@ -115,9 +115,9 @@ end
 
 ---@param segments table<integer, WorkspaceManagerStyledSegment?>
 ---@return string
-function mod.format(segments)
+function M.format(segments)
   -- Avoid writing wezterm.format every time
-  return wezterm.format(mod.build_format_items(segments))
+  return wezterm.format(M.build_format_items(segments))
 end
 
 ---@param icon string
@@ -150,7 +150,7 @@ local function status_style(status, category, format)
     local icon_style = resolve_label_color("icon", category)
     if icon_style then return icon_style end
   end
-  return mod.get_color(key)
+  return M.get_color(key)
 end
 
 ---Builds a switcher label with an aligned status column and styled segments.
@@ -159,7 +159,7 @@ end
 ---@param counts string
 ---@param category WorkspaceManagerChoiceCategory
 ---@return string
-function mod.build_switcher_label(icon, name, counts, category)
+function M.build_switcher_label(icon, name, counts, category)
   local items = {}
   local format = settings.workspace_status_format or "icons"
   assert(
@@ -173,14 +173,14 @@ function mod.build_switcher_label(icon, name, counts, category)
   local prefix = format == "words" and words[status] or trim_icon(icon)
   local width = format == "words" and 6 or icon_column_width()
   local style = status_style(status, category, format)
-  mod.append_segment(items, prefix, style)
+  M.append_segment(items, prefix, style)
   local padding = width - wezterm.column_width(prefix) + 1
-  if width > 0 then mod.append_segment(items, string.rep(" ", padding)) end
-  mod.append_segment(items, name, resolve_label_color("name", category))
-  mod.append_segment(items, counts, resolve_label_color("counts", category))
+  if width > 0 then M.append_segment(items, string.rep(" ", padding)) end
+  M.append_segment(items, name, resolve_label_color("name", category))
+  M.append_segment(items, counts, resolve_label_color("counts", category))
   if category == "current" then
-    mod.append_segment(items, " ")
-    mod.append_segment(
+    M.append_segment(items, " ")
+    M.append_segment(
       items,
       " current",
       resolve_color("workspace_current_marker", "prompt_accent")
@@ -190,4 +190,4 @@ function mod.build_switcher_label(icon, name, counts, category)
   return wezterm.format(items)
 end
 
-return mod
+return M

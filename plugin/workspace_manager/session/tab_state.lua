@@ -1,6 +1,6 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 local pane_tree_mod = require("workspace_manager.session.pane_tree")
-local pub = {}
+local M = {}
 
 ---@class WorkspaceManagerTabState
 ---@field title string
@@ -62,7 +62,7 @@ end
 ---Captures the state of a tab.
 ---@param tab MuxTab
 ---@return WorkspaceManagerTabState
-function pub.get_tab_state(tab)
+function M.get_tab_state(tab)
   local panes = tab:panes_with_info()
 
   local function is_zoomed()
@@ -100,7 +100,7 @@ end
 ---@param tab MuxTab
 ---@param tab_state WorkspaceManagerTabState
 ---@param opts WorkspaceManagerRestoreOptions
-function pub.restore_tab(tab, tab_state, opts)
+function M.restore_tab(tab, tab_state, opts)
   if opts.pane then
     tab_state.pane_tree.pane = opts.pane
   else
@@ -129,7 +129,7 @@ end
 ---Waits for a newly created pane's geometry and shell output to settle.
 ---@param pane_tree WorkspaceManagerPaneTree
 ---@param on_pane_restore fun(pane_tree: WorkspaceManagerPaneTree)
-function pub.restore_pane_when_stable(pane_tree, on_pane_restore)
+function M.restore_pane_when_stable(pane_tree, on_pane_restore)
   local previous, stable_count, checks = nil, 0, 0
 
   local function sample()
@@ -173,7 +173,7 @@ end
 
 ---Restores saved scrollback without sending commands to the new shell.
 ---@param pane_tree WorkspaceManagerPaneTree
-function pub.default_on_pane_restore(pane_tree)
+function M.default_on_pane_restore(pane_tree)
   local pane = pane_tree.pane
 
   if pane_tree.text then
@@ -199,4 +199,4 @@ function pub.default_on_pane_restore(pane_tree)
   end
 end
 
-return pub
+return M

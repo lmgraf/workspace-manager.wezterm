@@ -3,8 +3,8 @@ local utils = require("workspace_manager.session.utils")
 
 ---@class WorkspaceManagerPaneTreeModule
 ---@field max_nlines integer
-local pub = {}
-pub.max_nlines = 3500
+local M = {}
+M.max_nlines = 3500
 
 ---@class WorkspaceManagerPaneInformation
 ---@field pane Pane
@@ -134,7 +134,7 @@ local function insert_panes(root, panes)
       root.alt_screen_active = root.pane:is_alt_screen_active()
       if not root.alt_screen_active then
         local nlines = root.pane:get_dimensions().scrollback_rows
-        if nlines > pub.max_nlines then nlines = pub.max_nlines end
+        if nlines > M.max_nlines then nlines = M.max_nlines end
         root.text = root.pane:get_lines_as_escapes(nlines)
       end
     end
@@ -199,13 +199,13 @@ local function insert_panes(root, panes)
   return root
 end
 
-pub.subtree_height = subtree_height
-pub.subtree_width = subtree_width
+M.subtree_height = subtree_height
+M.subtree_width = subtree_width
 
 ---Creates a pane tree from an ordered list of pane information.
 ---@param panes WorkspaceManagerPaneInformation[]
 ---@return WorkspaceManagerPaneTree?
-function pub.create_pane_tree(panes)
+function M.create_pane_tree(panes)
   table.sort(panes, compare_pane_by_coord)
   local root = table.remove(panes, 1)
   return insert_panes(root, panes)
@@ -215,12 +215,12 @@ end
 ---@param pane_tree WorkspaceManagerPaneTree?
 ---@param f fun(pane_tree: WorkspaceManagerPaneTree): WorkspaceManagerPaneTree
 ---@return WorkspaceManagerPaneTree?
-function pub.map(pane_tree, f)
+function M.map(pane_tree, f)
   if pane_tree == nil then return nil end
 
   pane_tree = f(pane_tree)
-  if pane_tree.right then pub.map(pane_tree.right, f) end
-  if pane_tree.bottom then pub.map(pane_tree.bottom, f) end
+  if pane_tree.right then M.map(pane_tree.right, f) end
+  if pane_tree.bottom then M.map(pane_tree.bottom, f) end
 
   return pane_tree
 end
@@ -231,14 +231,14 @@ end
 ---@param acc T
 ---@param f fun(acc: T, pane_tree: WorkspaceManagerPaneTree): T
 ---@return T
-function pub.fold(pane_tree, acc, f)
+function M.fold(pane_tree, acc, f)
   if pane_tree == nil then return acc end
 
   acc = f(acc, pane_tree)
-  if pane_tree.right then acc = pub.fold(pane_tree.right, acc, f) end
-  if pane_tree.bottom then acc = pub.fold(pane_tree.bottom, acc, f) end
+  if pane_tree.right then acc = M.fold(pane_tree.right, acc, f) end
+  if pane_tree.bottom then acc = M.fold(pane_tree.bottom, acc, f) end
 
   return acc
 end
 
-return pub
+return M

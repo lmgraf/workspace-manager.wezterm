@@ -1,6 +1,6 @@
 local wezterm = require("wezterm") --[[@as Wezterm]]
 
-local pub = {}
+local M = {}
 
 ---@alias WorkspaceManagerStateEventType "workspace"|"window"|"tab"
 
@@ -9,7 +9,7 @@ local pub = {}
 ---@param str string file contents
 ---@return boolean success result
 ---@return string|nil error
-function pub.write_file(file_path, str)
+function M.write_file(file_path, str)
   local handle
   local suc, err = pcall(function()
     handle = io.open(file_path, "w+")
@@ -34,7 +34,7 @@ end
 ---@param file_path string full filename
 ---@return boolean success result
 ---@return string|nil error
-function pub.read_file(file_path)
+function M.read_file(file_path)
   local stdout
   local suc, err = pcall(function()
     local handle = io.open(file_path, "r")
@@ -67,10 +67,10 @@ end
 ---@param event_type WorkspaceManagerStateEventType
 ---@return boolean success result
 ---@return string|nil error
-function pub.write_state(file_path, state, event_type)
+function M.write_state(file_path, state, event_type)
   local json_state = wezterm.json_encode(state)
   json_state = sanitize_json(json_state)
-  local ok, err = pub.write_file(file_path, json_state)
+  local ok, err = M.write_file(file_path, json_state)
   if not ok then
     wezterm.log_error("Failed to write state: " .. tostring(err))
   end
@@ -80,7 +80,7 @@ end
 ---Loads and decodes a JSON file.
 ---@param file_path string
 ---@return table|nil
-function pub.load_json(file_path)
+function M.load_json(file_path)
   local lines = {}
   local ok, err = pcall(function()
     for line in io.lines(file_path) do
@@ -104,4 +104,4 @@ function pub.load_json(file_path)
   return wezterm.json_parse(json)
 end
 
-return pub
+return M
