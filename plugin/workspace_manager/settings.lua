@@ -96,7 +96,7 @@
 ---@field session_on_pane_restore? fun(pane_tree: WorkspaceManagerPaneTree) Custom pane restoration callback. Defaults to scrollback restoration.
 ---@field session_restore_on_startup boolean Whether the newest saved workspace is restored at startup. Defaults to `false`.
 ---@field workspace_switcher fun(): KeyAssignment
----@field switch_to_previous_workspace fun(): KeyAssignment
+---@field last_workspace fun(): KeyAssignment
 ---@field next_workspace fun(): KeyAssignment
 ---@field previous_workspace fun(): KeyAssignment
 ---@field unload_current_workspace fun(): KeyAssignment

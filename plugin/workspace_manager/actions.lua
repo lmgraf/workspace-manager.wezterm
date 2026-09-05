@@ -1146,9 +1146,9 @@ function M.workspace_switcher()
   end)
 end
 
----Returns an action that switches to the previously active workspace.
+---Returns an action that switches to the last active workspace.
 ---@return KeyAssignment
-function M.switch_to_previous_workspace()
+function M.last_workspace()
   return wezterm.action_callback(function(window, pane)
     local current_workspace = window:active_workspace()
     local previous_workspace = wezterm.GLOBAL.previous_workspace

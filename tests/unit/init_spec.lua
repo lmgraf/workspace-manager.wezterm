@@ -46,7 +46,7 @@ describe("plugin entrypoint", function()
       assert.is_false(plugin.session_enabled)
       for _, name in ipairs({
         "workspace_switcher",
-        "switch_to_previous_workspace",
+        "last_workspace",
         "next_workspace",
         "previous_workspace",
         "unload_current_workspace",

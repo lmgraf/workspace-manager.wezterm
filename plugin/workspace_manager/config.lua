@@ -160,7 +160,7 @@ function M.apply_default_keybindings(config)
   table.insert(keys, {
     key = "S",
     mods = "LEADER",
-    action = actions.switch_to_previous_workspace(),
+    action = actions.last_workspace(),
   })
 
   table.insert(keys, {

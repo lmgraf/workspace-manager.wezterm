@@ -119,7 +119,7 @@ function M.new()
   ctx.deps = deps
   ctx.window = window
   ctx.pane = {}
-  ctx.toggle = actions.switch_to_previous_workspace()
+  ctx.toggle = actions.last_workspace()
   ctx.next_workspace = actions.next_workspace()
   ctx.previous_workspace = actions.previous_workspace()
 

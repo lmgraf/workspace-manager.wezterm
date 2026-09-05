@@ -26,7 +26,7 @@ local data = require("workspace_manager.data")
 
 -- Public API
 M.workspace_switcher = actions.workspace_switcher
-M.switch_to_previous_workspace = actions.switch_to_previous_workspace
+M.last_workspace = actions.last_workspace
 M.next_workspace = actions.next_workspace
 M.previous_workspace = actions.previous_workspace
 M.unload_current_workspace = actions.unload_current_workspace

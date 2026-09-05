@@ -166,7 +166,7 @@ config.keys = {
   {
     key = "p",
     mods = "CTRL|SHIFT",
-    action = workspace_manager.switch_to_previous_workspace(),
+    action = workspace_manager.last_workspace(),
   },
   {
     key = "]",
@@ -249,7 +249,7 @@ config.key_tables.workspace_actions = {
 All actions return a WezTerm action that can be used in keybindings:
 
 - `workspace_manager.workspace_switcher()`: opens the unified switcher (switch, delete, unload, new, and rename all from within)
-- `workspace_manager.switch_to_previous_workspace()`: switches to the previously active workspace (Alt-Tab toggle behavior)
+- `workspace_manager.last_workspace()`: switches to the previously active workspace (Alt-Tab toggle behavior)
 - `workspace_manager.next_workspace()`: cycles to the next workspace in alphabetical order (with wrapping)
 - `workspace_manager.previous_workspace()`: cycles to the previous workspace in alphabetical order (with wrapping)
 - `workspace_manager.unload_current_workspace()`: saves and closes the current workspace after switching to the previously active live workspace, or another live workspace if needed; does nothing when no other live workspace is available
