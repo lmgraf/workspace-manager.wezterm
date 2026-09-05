@@ -181,8 +181,8 @@ config.keys = {
 }
 ```
 
-To bind workspace unload as `<leader>wu` (`[W]orkspace [U]nload`), use a
-one-shot key table:
+To bind workspace unload as `<leader>wu` (`[W]orkspace [U]nload`) and rename
+as `<leader>wr`, use a one-shot key table:
 
 ```lua
 table.insert(config.keys, {
@@ -199,6 +199,10 @@ config.key_tables.workspace_actions = {
   {
     key = "u",
     action = workspace_manager.unload_current_workspace(),
+  },
+  {
+    key = "r",
+    action = workspace_manager.rename_current_workspace(),
   },
 }
 ```
@@ -253,6 +257,7 @@ All actions return a WezTerm action that can be used in keybindings:
 - `workspace_manager.next_workspace()`: cycles to the next workspace in alphabetical order (with wrapping)
 - `workspace_manager.previous_workspace()`: cycles to the previous workspace in alphabetical order (with wrapping)
 - `workspace_manager.unload_current_workspace()`: saves and closes the current workspace after switching to the previously active live workspace, or another live workspace if needed; does nothing when no other live workspace is available
+- `workspace_manager.rename_current_workspace()`: prompts to rename the current workspace
 - `workspace_manager.save_workspace()`: saves the current workspace state to disk (requires `session_enabled = true`)
 
 ### Helpers

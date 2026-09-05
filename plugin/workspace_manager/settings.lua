@@ -100,6 +100,7 @@
 ---@field next_workspace fun(): KeyAssignment
 ---@field previous_workspace fun(): KeyAssignment
 ---@field unload_current_workspace fun(): KeyAssignment
+---@field rename_current_workspace fun(): KeyAssignment
 ---@field save_workspace fun(): KeyAssignment
 ---@field apply_to_config fun(config: Config)
 ---@field get_switcher_legend fun(): string

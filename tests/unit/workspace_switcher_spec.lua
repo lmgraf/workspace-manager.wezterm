@@ -505,6 +505,20 @@ describe("workspace switcher", function()
     assert.are.equal(0, #ctx:recorded(event_prefix .. "unloaded"))
   end)
 
+  it("renames the current workspace through the public action", function()
+    ctx.actions.rename_current_workspace()(ctx.window, ctx.pane)
+
+    assert.is_table(ctx.prompt)
+    ctx.prompt.action(ctx.window, ctx.pane, "Renamed")
+
+    assert.are.equal("A", ctx:recorded("rename")[1][1])
+    assert.are.equal("Renamed", ctx:recorded("rename")[1][2])
+    assert.are.equal("A", ctx:recorded("rename_state")[1][1])
+    assert.are.equal("Renamed", ctx:recorded("rename_state")[1][2])
+    assert.are.equal(1, #ctx:recorded(event_prefix .. "renamed"))
+    assert.are.equal(0, #ctx.timers)
+  end)
+
   it("renames live and saved targets and merges live workspaces", function()
     for _, id in ipairs({ "B", "Saved" }) do
       ctx:reset()

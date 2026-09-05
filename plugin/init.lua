@@ -30,6 +30,7 @@ M.last_workspace = actions.last_workspace
 M.next_workspace = actions.next_workspace
 M.previous_workspace = actions.previous_workspace
 M.unload_current_workspace = actions.unload_current_workspace
+M.rename_current_workspace = actions.rename_current_workspace
 M.save_workspace = actions.save_workspace
 M.apply_to_config = config_mod.apply_to_config
 M.get_switcher_legend = config_mod.get_switcher_legend

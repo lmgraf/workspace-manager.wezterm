@@ -896,19 +896,11 @@ local function unload_selected_workspace(context, window, pane, id)
 end
 
 ---Prompts for a replacement workspace name.
----@param context WorkspaceManagerSwitcherContext
 ---@param window Window
 ---@param pane Pane
 ---@param id string
-local function prompt_workspace_rename(context, window, pane, id)
-  if
-    not context.existing_workspace_ids[id]
-    and not context.saved_workspace_ids[id]
-  then
-    helpers.notify(window, "Workspace", "Cannot rename: not a workspace")
-    reopen_switcher(window, pane)
-    return
-  end
+---@param on_complete? fun(window: Window, pane: Pane)
+local function prompt_workspace_rename(window, pane, id, on_complete)
   window:perform_action(
     act.PromptInputLine({
       description = theme.format({
@@ -922,11 +914,28 @@ local function prompt_workspace_rename(context, window, pane, id)
         if line and line ~= "" then
           do_rename_workspace(id, line, inner_win, inner_p)
         end
-        reopen_switcher(inner_win, inner_p)
+        if on_complete then on_complete(inner_win, inner_p) end
       end),
     }),
     pane
   )
+end
+
+---Prompts to rename a workspace selected in the switcher.
+---@param context WorkspaceManagerSwitcherContext
+---@param window Window
+---@param pane Pane
+---@param id string
+local function prompt_selected_workspace_rename(context, window, pane, id)
+  if
+    not context.existing_workspace_ids[id]
+    and not context.saved_workspace_ids[id]
+  then
+    helpers.notify(window, "Workspace", "Cannot rename: not a workspace")
+    reopen_switcher(window, pane)
+    return
+  end
+  prompt_workspace_rename(window, pane, id, reopen_switcher)
 end
 
 ---Prompts for a new workspace name.
@@ -1087,7 +1096,7 @@ local function handle_switcher_selection(context, window, pane, id, label)
   elseif pending == "unload" then
     unload_selected_workspace(context, window, pane, id)
   elseif pending == "rename" then
-    prompt_workspace_rename(context, window, pane, id)
+    prompt_selected_workspace_rename(context, window, pane, id)
   elseif pending == "new" then
     prompt_workspace_name(window, pane)
   elseif pending == "new_at_path" then
@@ -1363,6 +1372,14 @@ function M.unload_current_workspace()
     })
 
     if unloaded then wezterm.GLOBAL.previous_workspace = nil end
+  end)
+end
+
+---Returns an action that prompts to rename the active workspace.
+---@return KeyAssignment
+function M.rename_current_workspace()
+  return wezterm.action_callback(function(window, pane)
+    prompt_workspace_rename(window, pane, window:active_workspace())
   end)
 end
 
