@@ -33,6 +33,8 @@ function M.new()
   end
   fake.json_parse = function()
     return {
+      { workspace = "A", pane_id = 10 },
+      { workspace = "A", pane_id = 11 },
       { workspace = "B", pane_id = 20 },
       { workspace = "B", pane_id = 21 },
       { workspace = "C", pane_id = 30 },
@@ -121,8 +123,8 @@ function M.new()
     },
     state = {
       is_excluded_workspace = function(name) return ctx.excluded == name end,
-      save_workspace_state = function(name)
-        ctx:record("save", name)
+      save_workspace_state = function(name, gui_window)
+        ctx:record("save", name, gui_window)
         return ctx.save_ok, ctx.save_ok and nil or "disk full"
       end,
       restore_workspace_state = function(...) ctx:record("restore", ...) end,
@@ -137,6 +139,13 @@ function M.new()
       end,
     },
     data = {
+      get_workspace_cycle_order = function()
+        local result = {}
+        for _, name in ipairs(ctx.live_workspaces) do
+          table.insert(result, { id = name })
+        end
+        return result
+      end,
       get_workspace_choices = workspace_choices,
       get_workspace_choices_alphabetical = function()
         ctx:record("alphabetical")
@@ -183,6 +192,7 @@ function M.new()
     self.directory_exists, self.mkdir_ok, self.zoxide = true, true, false
     self.excluded, self.saved_focus = nil, false
     self.save_ok, self.list_ok, self.kill_fail_id = true, true, nil
+    self.live_workspaces = { "A", "B" }
     fake.GLOBAL = { workspace_access_times = { A = 1, B = 2, Saved = 3 } }
     self.settings = { session_enabled = true, zoxide_path = "zoxide" }
     package.loaded.wezterm = fake

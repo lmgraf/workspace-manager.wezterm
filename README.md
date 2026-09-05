@@ -181,6 +181,28 @@ config.keys = {
 }
 ```
 
+To bind workspace unload as `<leader>wu` (`[W]orkspace [U]nload`), use a
+one-shot key table:
+
+```lua
+table.insert(config.keys, {
+  key = "w",
+  mods = "LEADER",
+  action = wezterm.action.ActivateKeyTable({
+    name = "workspace_actions",
+    one_shot = true,
+  }),
+})
+
+config.key_tables = config.key_tables or {}
+config.key_tables.workspace_actions = {
+  {
+    key = "u",
+    action = workspace_manager.unload_current_workspace(),
+  },
+}
+```
+
 **Note:** Even with custom keybindings, you still need to call `apply_to_config(config)` to register the `workspace_switcher_actions` key table (which powers the in-switcher Ctrl+D/U/N/P/R bindings) and the event handlers for session persistence and status bar updates.
 
 ## API
@@ -230,6 +252,7 @@ All actions return a WezTerm action that can be used in keybindings:
 - `workspace_manager.switch_to_previous_workspace()`: switches to the previously active workspace (Alt-Tab toggle behavior)
 - `workspace_manager.next_workspace()`: cycles to the next workspace in alphabetical order (with wrapping)
 - `workspace_manager.previous_workspace()`: cycles to the previous workspace in alphabetical order (with wrapping)
+- `workspace_manager.unload_current_workspace()`: saves and closes the current workspace after switching to the previously active live workspace, or another live workspace if needed; does nothing when no other live workspace is available
 - `workspace_manager.save_workspace()`: saves the current workspace state to disk (requires `session_enabled = true`)
 
 ### Helpers

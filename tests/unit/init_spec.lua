@@ -49,6 +49,7 @@ describe("plugin entrypoint", function()
         "switch_to_previous_workspace",
         "next_workspace",
         "previous_workspace",
+        "unload_current_workspace",
         "save_workspace",
         "apply_to_config",
         "get_switcher_legend",

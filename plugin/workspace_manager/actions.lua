@@ -349,6 +349,68 @@ local function close_workspace_panes(workspace_name, window)
   return true
 end
 
+---Saves a workspace before unloading it when session persistence applies.
+---@param workspace_name string
+---@param notification_window Window
+---@param gui_window? Window
+---@return boolean
+local function save_workspace_for_unload(
+  workspace_name,
+  notification_window,
+  gui_window
+)
+  local should_save = settings.session_enabled
+    and not state.is_excluded_workspace(workspace_name)
+  if not should_save then return true end
+
+  local save_ok, save_err = state.save_workspace_state(workspace_name, gui_window)
+  if save_ok then return true end
+
+  wezterm.log_warn(
+    "workspace_manager: refusing to unload '"
+      .. workspace_name
+      .. "' because save failed: "
+      .. tostring(save_err)
+  )
+  helpers.notify(
+    notification_window,
+    "Workspace",
+    "Failed to save; workspace was not unloaded",
+    4000
+  )
+  return false
+end
+
+---@class WorkspaceManagerUnloadOptions
+---@field gui_window? Window GUI context used to capture active window dimensions.
+---@field before_close? fun() Work to perform after saving and before closing panes.
+
+---Saves, closes, and emits the completion event for a workspace unload.
+---@param workspace_name string
+---@param window Window
+---@param pane Pane
+---@param opts? WorkspaceManagerUnloadOptions
+---@return boolean
+local function unload_workspace(workspace_name, window, pane, opts)
+  opts = opts or {}
+  if
+    not save_workspace_for_unload(workspace_name, window, opts.gui_window)
+  then
+    return false
+  end
+
+  if opts.before_close then opts.before_close() end
+  if not close_workspace_panes(workspace_name, window) then return false end
+
+  wezterm.emit(
+    "workspace_manager.workspace_switcher.unloaded",
+    window,
+    pane,
+    workspace_name
+  )
+  return true
+end
+
 ---Removes a workspace from persisted access history.
 ---@param workspace_name string
 local function remove_workspace_history(workspace_name)
@@ -829,36 +891,7 @@ local function unload_selected_workspace(context, window, pane, id)
   elseif not context.existing_workspace_ids[id] then
     helpers.notify(window, "Workspace", "Cannot unload: not a live workspace")
   else
-    local should_save = settings.session_enabled
-      and not state.is_excluded_workspace(id)
-    if should_save then
-      local save_ok, save_err = state.save_workspace_state(id)
-      if not save_ok then
-        wezterm.log_warn(
-          "workspace_manager: refusing to unload '"
-            .. id
-            .. "' because save failed: "
-            .. tostring(save_err)
-        )
-        helpers.notify(
-          window,
-          "Workspace",
-          "Failed to save; workspace was not unloaded",
-          4000
-        )
-        reopen_switcher(window, pane)
-        return
-      end
-    end
-
-    if close_workspace_panes(id, window) then
-      wezterm.emit(
-        "workspace_manager.workspace_switcher.unloaded",
-        window,
-        pane,
-        id
-      )
-    end
+    unload_workspace(id, window, pane)
   end
   reopen_switcher(window, pane)
 end
@@ -1278,6 +1311,61 @@ function mod.previous_workspace()
       pane,
       prev_workspace
     )
+  end)
+end
+
+---Returns an action that saves and closes the active workspace.
+---The previously active live workspace is preferred as the destination.
+---@return KeyAssignment
+function mod.unload_current_workspace()
+  return wezterm.action_callback(function(window, pane)
+    local current_workspace = window:active_workspace()
+    local previous_workspace = wezterm.GLOBAL.previous_workspace
+    local target_workspace
+
+    for _, choice in ipairs(data.get_workspace_cycle_order()) do
+      if choice.id ~= current_workspace then
+        if choice.id == previous_workspace then
+          target_workspace = previous_workspace
+          break
+        end
+        target_workspace = target_workspace or choice.id
+      end
+    end
+
+    if not target_workspace then
+      helpers.notify(window, "Workspace", "No other workspace available")
+      return
+    end
+
+    local unloaded = unload_workspace(current_workspace, window, pane, {
+      gui_window = window,
+      before_close = function()
+        local old_mux_window = data.get_current_mux_window(current_workspace)
+        wezterm.emit(
+          "workspace_manager.workspace_switcher.switching",
+          old_mux_window,
+          pane,
+          current_workspace,
+          target_workspace
+        )
+
+        switch_workspace(window, pane, { name = target_workspace })
+        history.update_access_time(target_workspace)
+
+        local new_mux_window = data.get_current_mux_window(target_workspace)
+        wezterm.emit(
+          "workspace_manager.workspace_switcher.selected",
+          new_mux_window,
+          pane,
+          target_workspace
+        )
+      end,
+    })
+
+    if unloaded then
+      wezterm.GLOBAL.previous_workspace = nil
+    end
   end)
 end
 

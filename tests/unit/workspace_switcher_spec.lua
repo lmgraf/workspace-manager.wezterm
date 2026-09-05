@@ -460,6 +460,51 @@ describe("workspace switcher", function()
     end
   end)
 
+  it("unloads the current workspace into the previous live workspace", function()
+    ctx.live_workspaces = { "A", "B", "C" }
+    ctx.fake.GLOBAL.previous_workspace = "C"
+
+    ctx.actions.unload_current_workspace()(ctx.window, ctx.pane)
+
+    assert.are.equal("C", ctx.current)
+    assert.are.equal("A", ctx:recorded("save")[1][1])
+    assert.are.equal(ctx.window, ctx:recorded("save")[1][2])
+    assert.are.equal(3, #ctx:recorded("command"))
+    assert.are.same(
+      { "wezterm", "cli", "kill-pane", "--pane-id=10" },
+      ctx:recorded("command")[2][1]
+    )
+    assert.are.same(
+      { "wezterm", "cli", "kill-pane", "--pane-id=11" },
+      ctx:recorded("command")[3][1]
+    )
+    assert.are.equal(1, #ctx:recorded(event_prefix .. "unloaded"))
+    assert.are.equal("A", ctx:recorded(event_prefix .. "unloaded")[1][3])
+    assert.is_nil(ctx.fake.GLOBAL.previous_workspace)
+  end)
+
+  it("does not unload the current workspace without a safe destination", function()
+    ctx.live_workspaces = { "A" }
+
+    ctx.actions.unload_current_workspace()(ctx.window, ctx.pane)
+
+    assert.are.equal("A", ctx.current)
+    assert.are.equal(0, #ctx:recorded("save"))
+    assert.are.equal(0, #ctx:recorded("command"))
+    assert.are.equal("No other workspace available", ctx:recorded("notify")[1][1])
+  end)
+
+  it("keeps the current workspace open when its unload save fails", function()
+    ctx.save_ok = false
+
+    ctx.actions.unload_current_workspace()(ctx.window, ctx.pane)
+
+    assert.are.equal("A", ctx.current)
+    assert.are.equal(1, #ctx:recorded("save"))
+    assert.are.equal(0, #ctx:recorded("command"))
+    assert.are.equal(0, #ctx:recorded(event_prefix .. "unloaded"))
+  end)
+
   it("renames live and saved targets and merges live workspaces", function()
     for _, id in ipairs({ "B", "Saved" }) do
       ctx:reset()
